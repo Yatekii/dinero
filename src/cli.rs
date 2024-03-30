@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
+use serde::{Deserialize, Serialize};
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -20,6 +21,9 @@ pub enum Command {
 
 #[derive(Parser, Debug)]
 pub struct Import {
+    /// ID of the ledger
+    #[arg(short, long)]
+    pub id: String,
     /// Name of the ledger
     #[arg(short, long)]
     pub name: String,
@@ -32,12 +36,16 @@ pub struct Import {
     /// The export format
     #[arg(short, long)]
     pub format: Format,
+    /// The initial balance
+    #[arg(short, long)]
+    pub initial_balance: Option<f64>,
 }
 
 #[derive(Parser, Debug)]
 pub struct Serve {}
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Format {
     Ubs,
     Neon,

@@ -8,24 +8,64 @@ use polars::{
         SerReader,
     },
 };
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
+use serde::{
+    de::{DeserializeOwned, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
 use time::macros::format_description;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Portfolio {
+pub struct Portfolio<T: std::fmt::Debug> {
     pub stocks: Vec<Stock>,
-    pub accounts: Vec<Account>,
+    pub accounts: Vec<Account<T>>,
 }
 
-impl Portfolio {
-    pub fn from_file(path: impl AsRef<Path>) -> Result<Portfolio> {
+impl<T: std::fmt::Debug> Default for Portfolio<T> {
+    fn default() -> Self {
+        Self {
+            stocks: Default::default(),
+            accounts: Default::default(),
+        }
+    }
+}
+
+impl<T: std::fmt::Debug + Serialize + DeserializeOwned + Into<StoredDataFrame>> Portfolio<T> {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Portfolio<T>> {
         let file = File::open(path)?;
         let portfolio = serde_yaml::from_reader(file)?;
         Ok(portfolio)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl<'a, T: std::fmt::Debug + Serialize + DeserializeOwned + Into<StoredDataFrame> + 'a>
+    Portfolio<T>
+where
+    StoredDataFrame: From<&'a T>,
+{
+    pub fn to_file(&'a self) -> Result<()> {
+        let accounts = self
+            .accounts
+            .iter()
+            .map(|a| Account {
+                id: a.id.clone(),
+                name: a.name.clone(),
+                currency: a.currency.clone(),
+                transactions: StoredDataFrame::from(&a.transactions),
+            })
+            .collect::<Vec<Account<StoredDataFrame>>>();
+        let portfolio = Portfolio {
+            stocks: self.stocks.clone(),
+            accounts,
+        };
+        serde_yaml::to_writer(
+            std::fs::File::create("portfolio/portfolio.yaml")?,
+            &portfolio,
+        )?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stock {
     pub symbol: String,
     pub shares: f64,
@@ -33,10 +73,11 @@ pub struct Stock {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Account {
+pub struct Account<T: std::fmt::Debug> {
+    pub id: String,
     pub name: String,
     pub currency: String,
-    pub transactions: NamedDataFrame,
+    pub transactions: T,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,14 +109,46 @@ pub enum Action {
     Fee,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NamedDataFrame {
     pub path: String,
     pub df: DataFrame,
 }
 
-impl<'de> Deserialize<'de> for NamedDataFrame {
-    fn deserialize<D>(deserializer: D) -> Result<NamedDataFrame, D::Error>
+impl From<&StoredDataFrame> for NamedDataFrame {
+    fn from(value: &StoredDataFrame) -> Self {
+        Self {
+            path: value.path.clone(),
+            df: value.df.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct StoredDataFrame {
+    pub path: String,
+    pub df: DataFrame,
+}
+
+impl From<&NamedDataFrame> for StoredDataFrame {
+    fn from(value: &NamedDataFrame) -> Self {
+        Self {
+            path: value.path.clone(),
+            df: value.df.clone(),
+        }
+    }
+}
+impl From<&StoredDataFrame> for StoredDataFrame {
+    fn from(value: &StoredDataFrame) -> Self {
+        Self {
+            path: value.path.clone(),
+            df: value.df.clone(),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for StoredDataFrame {
+    fn deserialize<D>(deserializer: D) -> Result<StoredDataFrame, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -102,11 +175,11 @@ impl<'de> Deserialize<'de> for NamedDataFrame {
             .finish()
             .map_err(serde::de::Error::custom)?;
 
-        Ok(NamedDataFrame { path, df })
+        Ok(StoredDataFrame { path, df })
     }
 }
 
-impl Serialize for NamedDataFrame {
+impl Serialize for StoredDataFrame {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

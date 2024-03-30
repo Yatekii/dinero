@@ -2,68 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>HTML 5 Boilerplate</title>
-    <link rel="stylesheet" href="style.css" />
+    <title>Vite + React + TS</title>
   </head>
   <body>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <canvas id="myChart" style="width: 100%"></canvas>
-    <script type="module">
-      const response = await fetch("http://127.0.0.1:3000/data");
-      const data = await response.json();
-      const xValues = data.timestamps.map(
-        (d) => new Date(d * 24 * 60 * 60 * 1000)
-      );
-      const barColors = ["red", "green", "blue", "orange", "brown"];
-
-      new Chart("myChart", {
-        type: "line",
-        data: {
-          labels: xValues,
-          datasets: data.balances.map((account, index) => {
-            return {
-              backgroundColor: barColors[index],
-              data: account.series,
-              label: account.name,
-              fill: true,
-            };
-          }),
-        },
-        options: {
-          plugins: {
-            tooltip: {
-              mode: "index",
-            },
-          },
-          interaction: {
-            mode: "nearest",
-            axis: "x",
-            intersect: false,
-          },
-          legend: { display: true },
-          title: {
-            display: true,
-            text: "Wealth over time",
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: "Date",
-              },
-            },
-            y: {
-              stacked: true,
-              title: {
-                display: true,
-                text: "Net Worth",
-              },
-            },
-          },
-        },
-      });
-    </script>
+    <div id="root" class="bg-slate-800"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
