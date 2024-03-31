@@ -20,8 +20,7 @@ pub async fn handler(
     State(state): State<PortfolioState>,
     Json(payload): Json<CreateLedgerRequest>,
 ) -> Result<Json<CreateLedgerResponse>, AppError> {
-    let incoming = banks::parse(payload.transactions_data, payload.format)?;
-    let incoming = incoming.with_columns([
+    let incoming = banks::parse(payload.transactions_data, payload.format)?.with_columns([
         col("Description").alias("description"),
         col("Category").alias("category"),
         lit("").alias("comments"),
@@ -32,24 +31,20 @@ pub async fn handler(
     let initial_description = "Initial Balance";
 
     let df = if let Some(initial_balance) = payload.initial_balance {
-        concat(
-            [
-                df!(
-                    "Date" => [initial_date],
-                    "Amount" => [initial_balance],
-                    "Description" => [initial_description],
-                )?
-                .lazy()
-                .select(&[
-                    col("Date").cast(DataType::Date),
-                    col("Amount"),
-                    col("Description"),
-                    lit("").alias("Category"),
-                ]),
-                incoming,
-            ],
-            UnionArgs::default(),
+        let initial = df!(
+            "Date" => [initial_date],
+            "Amount" => [initial_balance],
+            "Description" => [initial_description],
         )?
+        .lazy()
+        .select(&[
+            col("Date").cast(DataType::Date),
+            col("Amount"),
+            col("Description"),
+            lit("").alias("Category"),
+        ]);
+
+        concat([initial, incoming], UnionArgs::default())?
     } else {
         incoming
     }
