@@ -1,67 +1,77 @@
 import "./Dashboard.css";
-import { Card, Title } from "@tremor/react";
+import { Title } from "@tremor/react";
 import { AreaChart } from "@tremor/react";
-import { useState, useEffect } from "react";
+import { PortfolioSummaryResponse } from "./bindings/PortfolioSummaryResponse";
+import { useLoaderData } from "react-router-dom";
 
-function Dashboard() {
-  const [data, setData] = useState("");
+// eslint-disable-next-line react-refresh/only-export-components
+export async function dataLoader() {
+  const response = await fetch("http://127.0.0.1:3000/data");
+  const data = ((await response.json()) as PortfolioSummaryResponse)
+    .total_balance;
+  const chartdata = [] as ChartData[];
 
-  useEffect(() => {
-    // React advises to declare the async function directly inside useEffect
-    async function fetchData() {
-      const response = await fetch("http://127.0.0.1:3000/data");
-      const data = await response.json();
-      console.log(data);
-      const chartdata = [];
-      for (let i = 0; i < data.timestamps.length; i++) {
-        chartdata.push({
-          date: new Date(
-            data.timestamps[i] * 24 * 60 * 60 * 1000
-          ).toDateString(),
-        });
-        for (const entry of data.balances) {
-          chartdata[i][entry.name] = entry.series[i] ?? 0;
-        }
-      }
-      setData(chartdata);
+  for (let i = 0; i < data.timestamps.length; i++) {
+    chartdata.push({
+      date: new Date(
+        (data.timestamps[i] ?? 0) * 24 * 60 * 60 * 1000
+      ).toDateString(),
+    });
+    for (const entry of data.balances) {
+      chartdata[i][entry.name] = entry.series[i] ?? 0;
     }
-
-    fetchData();
-  }, []);
-
-  if (!data) {
-    return "Loading ...";
   }
 
-  const valueFormatter = function (number) {
-    return "CHF " + new Intl.NumberFormat("us").format(number).toString();
-  };
+  const categories = [];
+  for (const entry of data.balances) {
+    categories.push(entry.name);
+  }
 
-  console.log(data);
+  return { data: chartdata, categories };
+}
+
+function Dashboard() {
+  const data = useLoaderData() as Awaited<ReturnType<typeof dataLoader>>;
 
   return (
     <>
-      <Card>
-        <Title>Net worth over time (CHF)</Title>
-        <AreaChart
-          className="h-72 mt-4"
-          data={data}
-          index="date"
-          yAxisWidth={65}
-          categories={[
-            "Neon",
-            "UBS business [USD]",
-            "UBS business [CHF]",
-            "UBS private [CHF]",
-          ]}
-          connectNulls={true}
-          colors={["indigo", "cyan", "orange", "yellow"]}
-          valueFormatter={valueFormatter}
-          stack="true"
-        />
-      </Card>
+      <Overview data={data.data} categories={data.categories} />
     </>
   );
 }
+
+interface ChartData {
+  date: string;
+  [x: string]: number | string;
+}
+
+function Overview({
+  data,
+  categories,
+}: {
+  data: ChartData[];
+  categories: string[];
+}) {
+  return (
+    <>
+      <Title>Net worth over time (CHF)</Title>
+      <AreaChart
+        className="h-72 mt-4"
+        data={data}
+        index="date"
+        yAxisWidth={65}
+        categories={categories}
+        connectNulls={true}
+        colors={["indigo", "cyan", "orange", "yellow"]}
+        valueFormatter={valueFormatter}
+        stack={true}
+      />
+    </>
+  );
+}
+
+const valueFormatter = function (n: number) {
+  return "CHF " + new Intl.NumberFormat("us").format(n).toString();
+};
 
 export default Dashboard;

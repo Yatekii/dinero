@@ -1,6 +1,7 @@
 pub mod create;
 pub mod get;
 pub mod list;
+pub mod summary;
 pub mod update;
 
 #[cfg(test)]
@@ -16,7 +17,7 @@ mod tests {
 
     use crate::{
         handler::ledger::{create::CreateLedgerRequest, update::UpdateLedgerRequest},
-        portfolio::{Portfolio, StoredDataFrame},
+        realms::portfolio::{self, state::Portfolio},
     };
 
     #[tokio::test]
@@ -24,8 +25,9 @@ mod tests {
         let name = "Neon";
         let currency = "CHF";
         let Json(response) = crate::handler::ledger::create::handler(
-            State(Arc::new(
-                Mutex::new(Portfolio::<StoredDataFrame>::default()),
+            State((
+                Arc::new(portfolio::adapter::Test),
+                Arc::new(Mutex::new(Portfolio::default())),
             )),
             Json(CreateLedgerRequest {
                 transactions_data: TEST_TRANSACTION_DATA_FULL.into(),
@@ -38,14 +40,16 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(slug::slugify(name), response.account.id);
+        assert_eq!(
+            slug::slugify(format!("{}-{}", &name, &currency)),
+            response.account.id
+        );
         assert_eq!(name, response.account.name);
         assert_eq!(currency, response.account.currency);
 
         let sum = response
             .account
             .transactions
-            .df
             .column("balance")
             .unwrap()
             .f64()
@@ -59,9 +63,9 @@ mod tests {
     async fn update() {
         let name = "Neon";
         let currency = "CHF";
-        let state = Arc::new(Mutex::new(Portfolio::<StoredDataFrame>::default()));
+        let state = Arc::new(Mutex::new(Portfolio::default()));
         let Json(response) = crate::handler::ledger::create::handler(
-            State(state.clone()),
+            State((Arc::new(portfolio::adapter::Test), state.clone())),
             Json(CreateLedgerRequest {
                 transactions_data: TEST_TRANSACTION_DATA_HALF.into(),
                 format: crate::cli::Format::Neon,
@@ -74,24 +78,25 @@ mod tests {
         .unwrap();
 
         let Json(response) = crate::handler::ledger::update::handler(
-            State(state.clone()),
+            State((Arc::new(portfolio::adapter::Test), state.clone())),
             Path(response.account.id),
             Json(UpdateLedgerRequest {
                 transactions_data: TEST_TRANSACTION_DATA_DELETE_RANDOM.into(),
-                format: crate::cli::Format::Neon,
             }),
         )
         .await
         .unwrap();
 
-        assert_eq!(slug::slugify(name), response.account.id);
-        assert_eq!(name, response.account.name);
-        assert_eq!(currency, response.account.currency);
+        assert_eq!(
+            slug::slugify(format!("{}-{}", &name, &currency)),
+            response.ledger.id
+        );
+        assert_eq!(name, response.ledger.name);
+        assert_eq!(currency, response.ledger.currency);
 
         let sum = response
-            .account
+            .ledger
             .transactions
-            .df
             .column("balance")
             .unwrap()
             .f64()
@@ -101,20 +106,18 @@ mod tests {
         assert_approx_eq!(f64, 1211.1, sum);
 
         let Json(response) = crate::handler::ledger::update::handler(
-            State(state),
-            Path(response.account.id),
+            State((Arc::new(portfolio::adapter::Test), state)),
+            Path(response.ledger.id),
             Json(UpdateLedgerRequest {
                 transactions_data: TEST_TRANSACTION_DATA_MINUS_ONE.into(),
-                format: crate::cli::Format::Neon,
             }),
         )
         .await
         .unwrap();
 
         let sum = response
-            .account
+            .ledger
             .transactions
-            .df
             .column("balance")
             .unwrap()
             .f64()

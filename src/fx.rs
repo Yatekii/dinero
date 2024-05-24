@@ -2,11 +2,12 @@ use std::{collections::HashMap, io::Cursor, sync::Arc};
 
 use anyhow::Result;
 use polars::io::{
-    csv::{CsvReader, NullValues},
-    parquet::{ParquetReader, ParquetWriter},
+    csv::read::{CsvParseOptions, CsvReadOptions, NullValues},
+    parquet::{read::ParquetReader, write::ParquetWriter},
     SerReader,
 };
 use polars_core::frame::DataFrame;
+use reqwest::StatusCode;
 use time::{Date, Month, OffsetDateTime, Time};
 
 #[derive(Debug)]
@@ -60,14 +61,13 @@ impl HistoryCache {
                 .and_then(|index| rate.rates.get(index))
                 .and_then(|r| r.first().cloned())
                 .and_then(|v| v.try_extract::<i32>().ok())
-                .unwrap();
-            if (x as u64) < end {
+                .unwrap_or_default();
+            let x = (3600 * 24) * x;
+            if end < (x as u64) {
+                println!("{end} < {x}");
                 return Ok(rate.clone());
             }
         }
-
-        let _api_key = std::env::var("AV_KEY")?;
-
         let interval = "1d";
 
         let client = reqwest::Client::new();
@@ -79,14 +79,21 @@ impl HistoryCache {
                 interval,
             ))
             .send()
-            .await?
-            .text()
             .await?;
 
-        let rates = CsvReader::new(Cursor::new(response))
-            .with_null_values(Some(NullValues::AllColumnsSingle("null".into())))
-            .with_try_parse_dates(true)
+        if response.status() != StatusCode::OK {
+            panic!("{}", response.text().await?);
+        };
+        let text = response.text().await?;
+        let rates = CsvReadOptions::default()
+            .with_parse_options(
+                CsvParseOptions::default()
+                    .with_null_values(Some(NullValues::AllColumnsSingle("null".into())))
+                    .with_try_parse_dates(true),
+            )
+            .into_reader_with_file_handle(Cursor::new(&text))
             .finish()?;
+
         let pair = Arc::new(Pair {
             from: from.into(),
             to: to.into(),

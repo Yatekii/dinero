@@ -14,10 +14,12 @@
     "@headlessui/tailwindcss": "^0.2.0",
     "@heroicons/react": "^2",
     "@remixicon/react": "^4.1.1",
+    "@tanstack/react-table": "^8.15.3",
     "@tremor/react": "^3.13.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.3"
+    "react-router-dom": "^6.21.3",
+    "react-router-typesafe": "^1.4.4"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",

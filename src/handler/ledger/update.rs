@@ -6,40 +6,40 @@ use axum::{
 use polars::prelude::*;
 use polars_plan::dsl::col;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::{
     banks,
-    cli::Format,
     error::AppError,
-    portfolio::{Account, NamedDataFrame},
-    state::PortfolioState,
+    realms::portfolio::state::Ledger,
+    state::{PortfolioAdapter, PortfolioState},
 };
 
 #[debug_handler]
 pub async fn handler(
-    State(state): State<PortfolioState>,
+    State((adapter, state)): State<(PortfolioAdapter, PortfolioState)>,
     Path(id): Path<String>,
     Json(payload): Json<UpdateLedgerRequest>,
 ) -> Result<Json<UpdateLedgerResponse>, AppError> {
-    let incoming = banks::parse(payload.transactions_data, payload.format)?
-        .group_by([col("Date"), col("Description"), col("Category")])
-        .agg([
-            col("Amount").sum(),
-            col("*").exclude(["Amount"]),
-            col("Date").count().alias("transactions"),
-        ])
-        .with_columns([
-            col("Description").alias("description"),
-            col("Category").alias("category"),
-            lit("").alias("comments"),
-            lit(false).alias("checked"),
-        ]);
-
     let mut guard = state.lock().await;
 
-    if let Some(account) = guard.accounts.iter_mut().find(|a| a.id == id) {
-        account.transactions.df = concat(
-            [account.transactions.df.clone().lazy(), incoming],
+    if let Some(ledger) = guard.accounts.get_mut(&id) {
+        let incoming = banks::parse(payload.transactions_data, ledger.format)?
+            .group_by([col("Date"), col("Description"), col("Category")])
+            .agg([
+                col("Amount").sum(),
+                col("*").exclude(["Amount"]),
+                col("Date").count().alias("transactions"),
+            ])
+            .with_columns([
+                col("Description").alias("description"),
+                col("Category").alias("category"),
+                lit("").alias("comments"),
+                lit(false).alias("checked"),
+            ]);
+
+        let df = concat(
+            [ledger.transactions.clone().lazy(), incoming],
             UnionArgs::default(),
         )?
         .unique(
@@ -52,9 +52,9 @@ pub async fn handler(
             UniqueKeepStrategy::First,
         )
         .sort(
-            "Date",
-            SortOptions {
-                descending: false,
+            ["Date"],
+            SortMultipleOptions {
+                descending: vec![false],
                 nulls_last: false,
                 multithreaded: true,
                 maintain_order: true,
@@ -71,30 +71,33 @@ pub async fn handler(
             col("comments"),
             col("checked"),
             col("transactions"),
-        ])
-        .collect()?;
+        ]);
+
+        ledger.transactions = df.collect()?;
     }
 
-    guard.to_file()?;
-    let account = guard.accounts.last().unwrap();
+    adapter.store(&guard)?;
+    let account = guard.accounts.get(&id).unwrap();
 
     Ok(Json(UpdateLedgerResponse {
-        account: Account {
+        ledger: Ledger {
             id: account.id.clone(),
             name: account.name.clone(),
             currency: account.currency.clone(),
-            transactions: NamedDataFrame::from(&account.transactions),
+            format: account.format,
+            transactions: account.transactions.clone(),
         },
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct UpdateLedgerRequest {
     pub transactions_data: String,
-    pub format: Format,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct UpdateLedgerResponse {
-    pub account: Account<NamedDataFrame>,
+    pub ledger: Ledger,
 }

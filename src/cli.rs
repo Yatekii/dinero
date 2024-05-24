@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -44,8 +45,9 @@ pub struct Import {
 #[derive(Parser, Debug)]
 pub struct Serve {}
 
-#[derive(ValueEnum, Clone, Debug, Serialize, Deserialize)]
+#[derive(ValueEnum, Clone, Debug, Serialize, Deserialize, TS, Copy)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum Format {
     Ubs,
     Neon,

@@ -1,11 +1,10 @@
-mod app;
 mod banks;
 mod cli;
 mod error;
 pub mod fx;
 mod handler;
 mod import;
-mod portfolio;
+pub mod realms;
 mod state;
 
 use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
@@ -15,7 +14,6 @@ use axum::{routing::get, Router};
 use clap::Parser;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use crate::app::{data_handler, index_handler};
 use crate::state::AppState;
 
 #[tokio::main]
@@ -31,17 +29,18 @@ async fn main() -> anyhow::Result<()> {
 
 async fn serve() -> anyhow::Result<()> {
     // build our application with a route
-    let app = Router::new().route("/", get(index_handler)).nest(
+    let app = Router::new().route("/", get(handler::index::handler)).nest(
         "/",
         Router::<AppState>::new()
-            .route("/data", get(data_handler))
+            .route("/data", get(handler::portfolio::get::handler))
             .route("/ledgers", get(handler::ledger::list::handler))
+            .route("/ledgers/summary", get(handler::ledger::summary::handler))
             .route(
                 "/ledger/:id",
                 get(handler::ledger::get::handler).post(handler::ledger::update::handler),
             )
             .route("/ledger", post(handler::ledger::create::handler))
-            .with_state(AppState::new())
+            .with_state(AppState::new()?)
             .layer(
                 CorsLayer::new()
                     .allow_origin(AllowOrigin::predicate(move |origin, _parts| {

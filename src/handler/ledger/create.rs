@@ -1,47 +1,44 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use axum::{debug_handler, extract::State, Json};
-use polars::lazy::{dsl::UnionArgs, frame::IntoLazy};
+use polars::lazy::frame::IntoLazy;
 use polars::prelude::*;
 use polars_plan::dsl::col;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-use crate::portfolio::{Account, NamedDataFrame};
-use crate::{
-    banks,
-    cli::Format,
-    error::AppError,
-    portfolio::{self, StoredDataFrame},
-    state::PortfolioState,
-};
+use crate::realms::portfolio::state::Ledger;
+use crate::state::{PortfolioAdapter, PortfolioState};
+use crate::{banks, cli::Format, error::AppError};
 
 #[debug_handler]
 pub async fn handler(
-    State(state): State<PortfolioState>,
+    State((adapter, state)): State<(PortfolioAdapter, PortfolioState)>,
     Json(payload): Json<CreateLedgerRequest>,
 ) -> Result<Json<CreateLedgerResponse>, AppError> {
-    let incoming = banks::parse(payload.transactions_data, payload.format)?.with_columns([
+    let data = banks::parse(payload.transactions_data, payload.format).unwrap();
+
+    let incoming = data.clone().with_columns([
         col("Description").alias("description"),
         col("Category").alias("category"),
         lit("").alias("comments"),
         lit(false).alias("checked"),
     ]);
 
-    let initial_date = 0;
-    let initial_description = "Initial Balance";
-
     let df = if let Some(initial_balance) = payload.initial_balance {
+        let initial_date = 0;
+        let initial_description = "Initial Balance";
+        let initial_category = "initial";
         let initial = df!(
             "Date" => [initial_date],
             "Amount" => [initial_balance],
             "Description" => [initial_description],
+            "Category" => [initial_category],
         )?
         .lazy()
         .select(&[
             col("Date").cast(DataType::Date),
             col("Amount"),
             col("Description"),
-            lit("").alias("Category"),
+            col("Category"),
         ]);
 
         concat([initial, incoming], UnionArgs::default())?
@@ -55,9 +52,9 @@ pub async fn handler(
         col("Date").count().alias("transactions"),
     ])
     .sort(
-        "Date",
-        SortOptions {
-            descending: false,
+        ["Date"],
+        SortMultipleOptions {
+            descending: vec![false],
             nulls_last: false,
             multithreaded: true,
             maintain_order: true,
@@ -77,35 +74,37 @@ pub async fn handler(
     ])
     .collect()?;
 
-    let path = format!(
-        "portfolio/{}.parquet",
-        SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis()
-    );
-
-    let id = slug::slugify(&payload.name);
+    let id = slug::slugify(format!("{}-{}", &payload.name, &payload.currency));
     let name = payload.name.clone();
     let currency = payload.currency.clone();
+    let format = payload.format;
 
     let mut guard = state.lock().await;
-    guard.accounts.push(portfolio::Account {
-        id,
-        name,
-        currency,
-        transactions: StoredDataFrame { path, df },
-    });
-    guard.to_file()?;
-    let account = guard.accounts.last().unwrap();
+    guard.accounts.insert(
+        id.clone(),
+        Ledger {
+            id: id.clone(),
+            name,
+            currency,
+            format,
+            transactions: df,
+        },
+    );
+    adapter.store(&guard)?;
+    let account = guard.accounts.get(&id).unwrap();
     Ok(Json(CreateLedgerResponse {
-        account: Account {
+        account: Ledger {
             id: account.id.clone(),
             name: account.name.clone(),
             currency: account.currency.clone(),
-            transactions: NamedDataFrame::from(&account.transactions),
+            format,
+            transactions: account.transactions.clone(),
         },
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct CreateLedgerRequest {
     pub transactions_data: String,
     pub format: Format,
@@ -114,7 +113,8 @@ pub struct CreateLedgerRequest {
     pub currency: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct CreateLedgerResponse {
-    pub account: Account<NamedDataFrame>,
+    pub account: Ledger,
 }
