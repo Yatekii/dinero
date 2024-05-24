@@ -1,5 +1,4 @@
-- Filter internal (account2account) transactions
-- ack transactions
-- categporize transactions
-- fix UBS import (wrong transactions on updating the import)
-- store better UBS metadata
+- Filter internal (account2account) transactions (hard)
+- ack transactions (maybe)
+- categorize transactions (hard, maybe)
+- add trading & pension accounts

@@ -3,4 +3,4 @@ import type { Format } from "./Format";
 
 export type Ledger = { id: string, name: string, currency: string, format: Format, transactions: {
         columns: { values: number[] }[];
-    }, };
+    }, initial_balance: number | null, initial_date: number, spending: boolean, };

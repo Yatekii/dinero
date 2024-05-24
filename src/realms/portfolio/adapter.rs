@@ -40,6 +40,7 @@ impl Adapter for Production {
                         format: ledger.format,
                         initial_balance: ledger.initial_balance,
                         initial_date: ledger.initial_date,
+                        spending: ledger.spending,
                     },
                 )
             })
@@ -85,6 +86,7 @@ impl Adapter for Production {
                         )?,
                         initial_balance: ledger.initial_balance,
                         initial_date: ledger.initial_date,
+                        spending: ledger.spending,
                     },
                 ))
             })

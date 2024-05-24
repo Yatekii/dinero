@@ -25,6 +25,7 @@ pub async fn handler(
         transactions: account.transactions.clone(),
         initial_balance: account.initial_balance,
         initial_date: account.initial_date,
+        spending: account.spending,
     };
 
     Ok(Json(account))

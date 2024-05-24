@@ -91,6 +91,7 @@ pub async fn handler(
             transactions: df,
             initial_balance: payload.initial_balance,
             initial_date: payload.initial_date,
+            spending: payload.spending,
         },
     );
     adapter.store(&guard)?;
@@ -104,6 +105,7 @@ pub async fn handler(
             transactions: account.transactions.clone(),
             initial_balance: account.initial_balance,
             initial_date: account.initial_date,
+            spending: account.spending,
         },
     }))
 }
@@ -118,6 +120,7 @@ pub struct CreateLedgerRequest {
     pub initial_date: Option<NaiveDate>,
     pub name: String,
     pub currency: String,
+    pub spending: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]

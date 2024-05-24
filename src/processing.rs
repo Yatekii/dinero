@@ -13,7 +13,7 @@ pub fn process(
         lit(false).alias("checked"),
     ]);
 
-    let df = if let Some(initial_balance) = initial_balance {
+    let df = if let (Some(initial_balance), Some(initial_date)) = (initial_balance, initial_date) {
         let initial_description = "Initial Balance";
         let initial_category = "initial";
         let initial = df!(

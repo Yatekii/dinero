@@ -89,4 +89,4 @@ export function LedgerOverview() {
 }
 
 const dataFormatter = (number: number) =>
-  `$ ${Intl.NumberFormat("us").format(number).toString()}`;
+  `$ ${Intl.NumberFormat("de-DE").format(number).toString()}`;

@@ -37,6 +37,7 @@ mod tests {
                 initial_date: Some(NaiveDate::from_ymd_opt(2019, 1, 1).unwrap()),
                 name: name.into(),
                 currency: "CHF".into(),
+                spending: true,
             }),
         )
         .await
@@ -75,6 +76,7 @@ mod tests {
                 initial_date: Some(NaiveDate::from_ymd_opt(2019, 1, 1).unwrap()),
                 name: name.into(),
                 currency: "CHF".into(),
+                spending: false,
             }),
         )
         .await

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{debug_handler, extract::State, Json};
 use polars::{
     chunked_array::ops::SortOptions,
@@ -24,6 +26,9 @@ pub async fn handler(
             total_balance: PortfolioLedgersData {
                 balances: vec![],
                 timestamps: vec![],
+            },
+            spend_per_month: SpendPerMonth {
+                months: HashMap::new(),
             },
         }));
     }
@@ -56,13 +61,9 @@ pub async fn handler(
             .unwrap()
             .unwrap();
 
-        dbg!((&ledger.id, min));
-
         max_date = max_date.max(max);
         min_date = min_date.min(min);
     }
-
-    dbg!((min_date, max_date));
 
     let mut df = DataFrame::default();
     df.with_column(
@@ -126,11 +127,67 @@ pub async fn handler(
         });
     }
 
+    let mut data = HashMap::new();
+    for ledger in portfolio.accounts.values().filter(|a| a.spending) {
+        let transactions = ledger.transactions.clone().lazy().select(&[
+            col("Date").sort(SortOptions::default().with_maintain_order(true)),
+            col("Amount"),
+            col("Category"),
+        ]);
+
+        let transactions = if ledger.currency != "CHF" {
+            transactions
+                .left_join(
+                    fetch_rate(&state, ledger)
+                        .await?
+                        .select([col("Date"), col("Close")])
+                        .lazy(),
+                    col("Date"),
+                    col("Date"),
+                )
+                .select([
+                    col("*").exclude(["Amount", "Close"]),
+                    col("Amount") * col("Close"),
+                ])
+        } else {
+            transactions.select([col("Amount"), col("Date"), col("Category")])
+        }
+        .filter(col("Amount").lt(0))
+        .group_by([
+            col("Date").dt().year().alias("year"),
+            col("Date").dt().month().alias("month"),
+            col("Category"),
+        ])
+        .agg([col("Amount").sum()])
+        .collect()?;
+
+        let year = transactions.column("year")?.i32()?;
+        let month = transactions.column("month")?.i8()?;
+        let amount = transactions.column("Amount")?.f64()?;
+        let category = transactions.column("Category")?.str()?;
+
+        for (((year, month), amount), category) in year
+            .iter()
+            .zip(month.iter())
+            .zip(amount.iter())
+            .zip(category.iter())
+        {
+            let amount = -amount.unwrap();
+            let months = data.entry(month.unwrap()).or_insert(HashMap::new());
+            let categories = months.entry(year.unwrap()).or_insert(HashMap::new());
+            let total = categories
+                .entry(category.unwrap().to_string())
+                .or_insert(0.0);
+            *total += amount;
+        }
+    }
+
     Ok(Json(PortfolioSummaryResponse {
         total_balance: PortfolioLedgersData {
             balances,
             timestamps,
         },
+        spend_per_month: SpendPerMonth { months: data },
     }))
 }
 
@@ -152,8 +209,15 @@ pub struct PortfolioLedgersData {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+pub struct SpendPerMonth {
+    pub months: HashMap<i8, HashMap<i32, HashMap<String, f64>>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct PortfolioSummaryResponse {
     pub total_balance: PortfolioLedgersData,
+    pub spend_per_month: SpendPerMonth,
 }
 
 async fn fetch_rate(state: &AppState, ledger: &Ledger) -> Result<LazyFrame, AppError> {

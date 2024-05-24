@@ -9,7 +9,7 @@ import {
   createRoutesFromElements,
   RouterProvider,
 } from "react-router-dom";
-import Dashboard, { dataLoader } from "./Dashboard.tsx";
+import Dashboard, { dataLoader } from "./dashboard/Dashboard.tsx";
 import { Ledger, ledgerLoader } from "./ledger/LedgerView.tsx";
 import { LedgerLayout, ledgersLoader } from "./ledger/LedgerLayout.tsx";
 import { LedgerCreate } from "./ledger/LedgerCreate.tsx";

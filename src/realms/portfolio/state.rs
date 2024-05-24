@@ -38,6 +38,7 @@ pub struct SerdeLedger {
     pub format: Format,
     pub initial_balance: Option<f64>,
     pub initial_date: Option<NaiveDate>,
+    pub spending: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -54,6 +55,7 @@ pub struct Ledger {
     pub initial_balance: Option<f64>,
     #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,
+    pub spending: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
