@@ -1,4 +1,5 @@
 use axum::{debug_handler, extract::State, Json};
+use chrono::NaiveDate;
 use polars::lazy::frame::IntoLazy;
 use polars::prelude::*;
 use polars_plan::dsl::col;
@@ -88,6 +89,8 @@ pub async fn handler(
             currency,
             format,
             transactions: df,
+            initial_balance: payload.initial_balance,
+            initial_date: payload.initial_date,
         },
     );
     adapter.store(&guard)?;
@@ -99,6 +102,8 @@ pub async fn handler(
             currency: account.currency.clone(),
             format,
             transactions: account.transactions.clone(),
+            initial_balance: account.initial_balance,
+            initial_date: account.initial_date,
         },
     }))
 }
@@ -109,6 +114,8 @@ pub struct CreateLedgerRequest {
     pub transactions_data: String,
     pub format: Format,
     pub initial_balance: Option<f64>,
+    #[ts(type = "number")]
+    pub initial_date: Option<NaiveDate>,
     pub name: String,
     pub currency: String,
 }

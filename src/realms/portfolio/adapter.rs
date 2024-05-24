@@ -1,10 +1,9 @@
 use std::{collections::HashMap, fs::File, path::PathBuf};
 
 use anyhow::Result;
-use polars::io::{
-    parquet::{read::ParquetReader, write::ParquetWriter},
-    SerReader,
-};
+use polars::io::parquet::write::ParquetWriter;
+
+use crate::{banks::load, processing::process};
 
 use super::state::{Ledger, Portfolio, SerdeLedger, SerdePortfolio};
 
@@ -39,6 +38,8 @@ impl Adapter for Production {
                         name: ledger.name.clone(),
                         currency: ledger.currency.clone(),
                         format: ledger.format,
+                        initial_balance: ledger.initial_balance,
+                        initial_date: ledger.initial_date,
                     },
                 )
             })
@@ -69,6 +70,7 @@ impl Adapter for Production {
             .accounts
             .into_iter()
             .map(|(id, ledger)| {
+                let path = path.join(ledger.id);
                 Ok((
                     id.clone(),
                     Ledger {
@@ -76,11 +78,13 @@ impl Adapter for Production {
                         name: ledger.name,
                         currency: ledger.currency,
                         format: ledger.format,
-                        transactions: ParquetReader::new(
-                            std::fs::File::open(path.join(format!("{}.parquet", ledger.id)))
-                                .unwrap(),
-                        )
-                        .finish()?,
+                        transactions: process(
+                            load(path, ledger.format)?,
+                            ledger.initial_balance,
+                            ledger.initial_date,
+                        )?,
+                        initial_balance: ledger.initial_balance,
+                        initial_date: ledger.initial_date,
                     },
                 ))
             })

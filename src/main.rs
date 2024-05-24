@@ -4,6 +4,7 @@ mod error;
 pub mod fx;
 mod handler;
 mod import;
+pub mod processing;
 pub mod realms;
 mod state;
 

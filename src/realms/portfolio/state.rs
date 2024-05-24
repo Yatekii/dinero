@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use chrono::NaiveDate;
 use polars::frame::DataFrame;
 use serde::{Deserialize, Deserializer, Serialize};
 use time::macros::format_description;
@@ -35,6 +36,8 @@ pub struct SerdeLedger {
     pub name: String,
     pub currency: String,
     pub format: Format,
+    pub initial_balance: Option<f64>,
+    pub initial_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -48,6 +51,9 @@ pub struct Ledger {
         columns: { values: number[] }[];
     }")]
     pub transactions: DataFrame,
+    pub initial_balance: Option<f64>,
+    #[ts(type = "number")]
+    pub initial_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

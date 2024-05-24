@@ -10,10 +10,12 @@ use polars::{
 };
 use polars_plan::dsl::{col, lit};
 
+use super::Parser;
+
 pub struct Neon {}
 
-impl Neon {
-    pub fn parse(content: String) -> anyhow::Result<LazyFrame> {
+impl Parser for Neon {
+    fn parse(content: String) -> anyhow::Result<LazyFrame> {
         let df = CsvReadOptions::default()
             .with_parse_options(
                 CsvParseOptions::default()

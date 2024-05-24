@@ -56,9 +56,13 @@ pub async fn handler(
             .unwrap()
             .unwrap();
 
+        dbg!((&ledger.id, min));
+
         max_date = max_date.max(max);
         min_date = min_date.min(min);
     }
+
+    dbg!((min_date, max_date));
 
     let mut df = DataFrame::default();
     df.with_column(

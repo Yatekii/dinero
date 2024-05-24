@@ -12,6 +12,7 @@ mod tests {
         extract::{Path, State},
         Json,
     };
+    use chrono::NaiveDate;
     use float_cmp::assert_approx_eq;
     use tokio::sync::Mutex;
 
@@ -33,6 +34,7 @@ mod tests {
                 transactions_data: TEST_TRANSACTION_DATA_FULL.into(),
                 format: crate::cli::Format::Neon,
                 initial_balance: Some(42.),
+                initial_date: Some(NaiveDate::from_ymd_opt(2019, 1, 1).unwrap()),
                 name: name.into(),
                 currency: "CHF".into(),
             }),
@@ -70,6 +72,7 @@ mod tests {
                 transactions_data: TEST_TRANSACTION_DATA_HALF.into(),
                 format: crate::cli::Format::Neon,
                 initial_balance: Some(42.),
+                initial_date: Some(NaiveDate::from_ymd_opt(2019, 1, 1).unwrap()),
                 name: name.into(),
                 currency: "CHF".into(),
             }),

@@ -10,10 +10,12 @@ use polars::{
     prelude::*,
 };
 
+use super::Parser;
+
 pub struct Ubs {}
 
-impl Ubs {
-    pub fn parse(content: String) -> anyhow::Result<LazyFrame> {
+impl Parser for Ubs {
+    fn parse(content: String) -> anyhow::Result<LazyFrame> {
         let df = CsvReadOptions::default()
             .with_parse_options(
                 CsvParseOptions::default()
@@ -64,6 +66,7 @@ impl Ubs {
 
 #[cfg(test)]
 mod tests {
+    use crate::banks::Parser;
 
     const TRANSACTIONS: &str = r#"Trade date;Trade time;Booking date;Value date;Currency;Debit;Credit;Individual amount;Balance;Transaction no.;Description1;Description2;Description3;Footnotes;
 2021-01-29;;2021-01-29;2021-01-31;CHF;-10.00;;;22113.15;BL01529HJ0125142;"Balance closing of service prices";;"Transaction no. BL01529HJ0125142";;

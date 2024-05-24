@@ -23,6 +23,8 @@ pub async fn handler(
         currency: account.currency.clone(),
         format: account.format,
         transactions: account.transactions.clone(),
+        initial_balance: account.initial_balance,
+        initial_date: account.initial_date,
     };
 
     Ok(Json(account))
