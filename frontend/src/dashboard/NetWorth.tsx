@@ -42,6 +42,8 @@ export default function NetWorth({
         colors={["indigo", "cyan", "orange", "yellow"]}
         valueFormatter={valueFormatter}
         stack={true}
+        xAxisLabel="Date"
+        yAxisLabel="Net Worth"
       />
     </>
   );

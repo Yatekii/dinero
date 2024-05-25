@@ -35,7 +35,12 @@ export function SpendOverMonth({
         categories={["2022", "2023", "2024"]}
         colors={["gray", "blue", "purple"]}
         yAxisWidth={50}
+        valueFormatter={valueFormatter}
       />
     </>
   );
 }
+
+const valueFormatter = function (n: number) {
+  return "CHF " + new Intl.NumberFormat("de-DE").format(n).toString();
+};

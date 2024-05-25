@@ -10,7 +10,7 @@ const reverseItems = () => items().reverse();
 
 export function Layout() {
   return (
-    <Card className="mx-full h-full">
+    <Card className="mx-full h-fit">
       <MainMenu />
       <Outlet />
     </Card>
