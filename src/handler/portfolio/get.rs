@@ -67,7 +67,7 @@ pub async fn handler(
 
     let mut df = DataFrame::default();
     df.with_column(
-        Series::from_vec("Date", (min_date..max_date).collect::<Vec<_>>())
+        Series::from_vec("Date", (min_date..max_date + 1).collect::<Vec<_>>())
             .cast(&polars_core::datatypes::DataType::Date)
             .unwrap(),
     )
