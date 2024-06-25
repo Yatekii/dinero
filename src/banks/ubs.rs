@@ -27,27 +27,9 @@ impl Parser for Ubs {
             .into_reader_with_file_handle(Cursor::new(&content))
             .finish()?;
 
-        #[allow(clippy::possible_missing_comma)]
-        let first = df
-            .clone()
+        let df = df
             .lazy()
-            .select([
-                col("Balance").alias("Credit").last()
-                    - col("Debit")
-                        .fill_null(col("Credit"))
-                        .str()
-                        .replace(lit("'"), lit(""), true)
-                        .cast(DataType::Float64)
-                        .last(),
-                lit(NULL).cast(DataType::Float64).alias("Debit"),
-                col("Booking date").last(),
-                col("Description1").last(),
-            ])
-            .collect()
-            .unwrap();
-
-        let df = concat([first.lazy(), df.lazy().reverse()], UnionArgs::default())
-            .unwrap()
+            .reverse()
             .select(&[
                 col("Booking date").alias("Date"),
                 col("Debit")
