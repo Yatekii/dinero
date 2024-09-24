@@ -21,6 +21,7 @@ pub fn process(
             "Amount" => [initial_balance],
             "Description" => [initial_description],
             "Category" => [initial_category],
+            "Symbol" => [""]
         )?
         .lazy()
         .select(&[
@@ -28,6 +29,7 @@ pub fn process(
             col("Amount"),
             col("Description"),
             col("Category"),
+            col("Symbol"),
         ]);
 
         concat([initial, incoming], UnionArgs::default())?
@@ -60,6 +62,7 @@ pub fn process(
         lit("").alias("comments"),
         lit(false).alias("checked"),
         col("transactions"),
+        col("Symbol"),
     ])
     .collect()?;
 

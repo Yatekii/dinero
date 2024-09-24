@@ -11,7 +11,7 @@ use ts_rs::TS;
 use crate::{
     banks,
     error::AppError,
-    realms::portfolio::state::Ledger,
+    realms::portfolio::state::Account,
     state::{PortfolioAdapter, PortfolioState},
 };
 
@@ -39,7 +39,7 @@ pub async fn handler(
             ]);
 
         let df = concat(
-            [ledger.transactions.clone().lazy(), incoming],
+            [ledger.ledgers.clone().lazy(), incoming],
             UnionArgs::default(),
         )?
         .unique(
@@ -73,19 +73,19 @@ pub async fn handler(
             col("transactions"),
         ]);
 
-        ledger.transactions = df.collect()?;
+        ledger.ledgers = df.collect()?;
     }
 
     adapter.store(&guard)?;
     let account = guard.accounts.get(&id).unwrap();
 
     Ok(Json(UpdateLedgerResponse {
-        ledger: Ledger {
+        ledger: Account {
             id: account.id.clone(),
             name: account.name.clone(),
             currency: account.currency.clone(),
             format: account.format,
-            transactions: account.transactions.clone(),
+            ledgers: account.ledgers.clone(),
             initial_balance: account.initial_balance,
             initial_date: account.initial_date,
             spending: account.spending,
@@ -102,5 +102,5 @@ pub struct UpdateLedgerRequest {
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct UpdateLedgerResponse {
-    pub ledger: Ledger,
+    pub ledger: Account,
 }

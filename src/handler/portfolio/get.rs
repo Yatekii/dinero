@@ -13,7 +13,7 @@ use polars_plan::dsl::col;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{error::AppError, realms::portfolio::state::Ledger, state::AppState};
+use crate::{error::AppError, realms::portfolio::state::Account, state::AppState};
 
 #[debug_handler]
 pub async fn handler(
@@ -37,7 +37,7 @@ pub async fn handler(
     let mut min_date = u64::MAX;
     for ledger in portfolio.accounts.values() {
         let max = ledger
-            .transactions
+            .ledgers
             .clone()
             .lazy()
             .select([col("Date").max()])
@@ -49,7 +49,7 @@ pub async fn handler(
             .unwrap()
             .unwrap();
         let min = ledger
-            .transactions
+            .ledgers
             .clone()
             .lazy()
             .select([col("Date").min()])
@@ -75,7 +75,13 @@ pub async fn handler(
     let mut df = df.lazy().select([col("Date")]).collect().unwrap();
 
     for ledger in portfolio.accounts.values() {
-        let transactions = ledger.transactions.clone().lazy().select(&[
+        let is_stock = ledger
+            .ledgers
+            .clone()
+            .get_column_names()
+            .contains(&"Symbol");
+        dbg!(is_stock);
+        let transactions = ledger.ledgers.clone().lazy().select(&[
             col("Date").sort(SortOptions::default().with_maintain_order(true)),
             col("balance"),
         ]);
@@ -129,7 +135,7 @@ pub async fn handler(
 
     let mut data = HashMap::new();
     for ledger in portfolio.accounts.values().filter(|a| a.spending) {
-        let transactions = ledger.transactions.clone().lazy().select(&[
+        let transactions = ledger.ledgers.clone().lazy().select(&[
             col("Date").sort(SortOptions::default().with_maintain_order(true)),
             col("Amount"),
             col("Category"),
@@ -220,7 +226,7 @@ pub struct PortfolioSummaryResponse {
     pub spend_per_month: SpendPerMonth,
 }
 
-async fn fetch_rate(state: &AppState, ledger: &Ledger) -> Result<LazyFrame, AppError> {
+async fn fetch_rate(state: &AppState, ledger: &Account) -> Result<LazyFrame, AppError> {
     let mut cache = state.cache.lock().await;
     let rate = cache.get(&ledger.currency, "CHF").await?;
     Ok(rate.rates.clone().lazy())

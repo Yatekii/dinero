@@ -1,30 +1,24 @@
 mod ibkr;
-mod neon;
-mod ubs;
 
 use std::path::Path;
 
 use anyhow::{Context, Result};
 use polars::{lazy::frame::LazyFrame, prelude::*};
 
-use crate::cli::BankFormat;
+use crate::cli::BrokerFormat;
 
-pub fn parse(content: String, format: BankFormat) -> Result<LazyFrame> {
+pub fn parse(content: String, format: BrokerFormat) -> Result<LazyFrame> {
     Ok(match format {
-        BankFormat::Neon => neon::Neon::parse(content),
-        BankFormat::Ubs => ubs::Ubs::parse(content),
-        BankFormat::Ibkr => ibkr::Ibkr::parse(content),
+        BrokerFormat::Ibkr => ibkr::Ibkr::parse(content),
     }?
     .ledgers[0]
         .df
         .clone())
 }
 
-pub fn load(path: impl AsRef<Path>, format: BankFormat) -> anyhow::Result<LazyFrame> {
+pub fn load(path: impl AsRef<Path>, format: BrokerFormat) -> anyhow::Result<LazyFrame> {
     match format {
-        BankFormat::Neon => load_inner::<neon::Neon>(path),
-        BankFormat::Ubs => load_inner::<ubs::Ubs>(path),
-        BankFormat::Ibkr => load_inner::<ibkr::Ibkr>(path),
+        BrokerFormat::Ibkr => load_inner::<ibkr::Ibkr>(path),
     }
 }
 

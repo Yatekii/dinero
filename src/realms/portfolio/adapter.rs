@@ -5,7 +5,7 @@ use polars::io::parquet::write::ParquetWriter;
 
 use crate::{banks::load, processing::process};
 
-use super::state::{Ledger, Portfolio, SerdeLedger, SerdePortfolio};
+use super::state::{Account, Portfolio, SerdeAccount, SerdePortfolio};
 
 pub trait Adapter: Send + Sync {
     fn load(&self) -> Result<Portfolio>;
@@ -33,7 +33,7 @@ impl Adapter for Production {
             .map(|(id, ledger)| {
                 (
                     id.clone(),
-                    SerdeLedger {
+                    SerdeAccount {
                         id: ledger.id.clone(),
                         name: ledger.name.clone(),
                         currency: ledger.currency.clone(),
@@ -44,19 +44,19 @@ impl Adapter for Production {
                     },
                 )
             })
-            .collect::<HashMap<String, SerdeLedger>>();
+            .collect::<HashMap<String, SerdeAccount>>();
         serde_yaml::to_writer(
             std::fs::File::create("portfolio/portfolio.yaml")?,
             &SerdePortfolio {
-                stocks: portfolio.stocks.clone(),
                 accounts,
+                stocks: vec![],
             },
         )?;
         let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
         std::fs::create_dir_all(&path)?;
         for (id, ledger) in &portfolio.accounts {
             let mut file = std::fs::File::create(path.join(format!("{}.parquet", id)))?;
-            let mut df = ledger.transactions.clone();
+            let mut df = ledger.ledgers.clone();
             ParquetWriter::new(&mut file).finish(&mut df)?;
         }
         Ok(())
@@ -70,23 +70,23 @@ impl Adapter for Production {
         let accounts = portfolio
             .accounts
             .into_iter()
-            .map(|(id, ledger)| {
-                let path = path.join(ledger.id);
+            .map(|(id, account)| {
+                let path = path.join(account.id);
                 Ok((
                     id.clone(),
-                    Ledger {
+                    Account {
                         id,
-                        name: ledger.name,
-                        currency: ledger.currency,
-                        format: ledger.format,
-                        transactions: process(
-                            load(path, ledger.format)?,
-                            ledger.initial_balance,
-                            ledger.initial_date,
+                        name: account.name,
+                        currency: account.currency,
+                        format: account.format,
+                        ledgers: process(
+                            load(path, account.format)?,
+                            account.initial_balance,
+                            account.initial_date,
                         )?,
-                        initial_balance: ledger.initial_balance,
-                        initial_date: ledger.initial_date,
-                        spending: ledger.spending,
+                        initial_balance: account.initial_balance,
+                        initial_date: account.initial_date,
+                        spending: account.spending,
                     },
                 ))
             })

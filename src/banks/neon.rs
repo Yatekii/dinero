@@ -6,16 +6,16 @@ use polars::{
         csv::read::{CsvParseOptions, CsvReadOptions},
         SerReader,
     },
-    lazy::frame::{IntoLazy, LazyFrame},
+    lazy::frame::IntoLazy,
 };
 use polars_plan::dsl::{col, lit};
 
-use super::Parser;
+use super::{ParsedAccount, ParsedLedger, Parser};
 
 pub struct Neon {}
 
 impl Parser for Neon {
-    fn parse(content: String) -> anyhow::Result<LazyFrame> {
+    fn parse(content: String) -> anyhow::Result<ParsedAccount> {
         let df = CsvReadOptions::default()
             .with_parse_options(
                 CsvParseOptions::default()
@@ -46,8 +46,14 @@ impl Parser for Neon {
                 "Tags",
                 "Wise",
                 "Spaces",
-            ]);
+            ])
+            .with_column(lit("").alias("Symbol"));
 
-        Ok(df)
+        Ok(ParsedAccount {
+            ledgers: vec![ParsedLedger {
+                name: "".into(),
+                df,
+            }],
+        })
     }
 }

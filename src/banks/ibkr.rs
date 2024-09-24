@@ -1,55 +1,84 @@
 use std::io::Cursor;
 
-use polars::{
-    datatypes::DataType,
-    io::SerReader,
-    lazy::{
-        dsl::{col, lit},
-        frame::IntoLazy,
-    },
-    prelude::*,
-};
+use anyhow::bail;
+use polars::{io::SerReader, prelude::*};
 
-use super::{ParsedAccount, ParsedLedger, Parser};
+use super::{ParsedAccount, Parser};
 
-pub struct Ubs {}
+pub struct Ibkr {}
 
-impl Parser for Ubs {
+impl Parser for Ibkr {
     fn parse(content: String) -> anyhow::Result<ParsedAccount> {
-        let df = CsvReadOptions::default()
-            .with_parse_options(
-                CsvParseOptions::default()
-                    .with_separator(b';')
-                    .with_try_parse_dates(true)
-                    .with_truncate_ragged_lines(true),
-            )
-            .with_has_header(true)
-            .into_reader_with_file_handle(Cursor::new(&content))
-            .finish()?;
+        let mut ledgers = vec![];
+        let lines = content.lines().collect::<Vec<_>>();
+        let mut end = lines.len();
+        #[allow(clippy::never_loop)]
+        for (index, line) in lines.iter().enumerate().rev() {
+            if line.starts_with("\"HEADER\"") {
+                let content = &lines[index..end].join("\n");
 
-        let df = df
-            .lazy()
-            .reverse()
-            .select(&[
-                col("Booking date").alias("Date"),
-                col("Debit")
-                    .fill_null(col("Credit"))
-                    .alias("Amount")
-                    .str()
-                    .replace(lit("'"), lit(""), true)
-                    .cast(DataType::Float64),
-                col("Description1").alias("Description"),
-            ])
-            .with_column(lit("").alias("Category"))
-            .with_column(lit("").alias("Symbol"));
+                let df = CsvReadOptions::default()
+                    .with_parse_options(
+                        CsvParseOptions::default()
+                            .with_separator(b',')
+                            .with_try_parse_dates(true)
+                            .with_truncate_ragged_lines(true),
+                    )
+                    .with_has_header(true)
+                    .into_reader_with_file_handle(Cursor::new(&content))
+                    .finish()?;
 
-        Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger {
-                name: "".into(),
-                df,
-            }],
-        })
+                let df = if line.contains("\"CTRN\"") {
+                    parse_cash_transactions(df)?
+                } else if line.contains("\"TRNT\"") {
+                    parse_stock_transactions(df)?
+                } else {
+                    bail!("Unknown export")
+                };
+
+                dbg!(&df.clone().collect());
+
+                ledgers.push(super::ParsedLedger {
+                    name: "".into(),
+                    df,
+                });
+
+                end = index;
+            }
+        }
+
+        Ok(ParsedAccount { ledgers })
     }
+}
+
+fn parse_stock_transactions(df: DataFrame) -> Result<LazyFrame, PolarsError> {
+    let df = df
+        .lazy()
+        .reverse()
+        .select(&[
+            col("TradeDate").alias("Date"),
+            col("Quantity").alias("Amount").cast(DataType::Float64),
+            col("Description"),
+            col("Symbol"),
+        ])
+        .with_column(lit("Broker").alias("Category"));
+
+    Ok(df)
+}
+
+fn parse_cash_transactions(df: DataFrame) -> Result<LazyFrame, PolarsError> {
+    let df = df
+        .lazy()
+        .reverse()
+        .select(&[
+            col("SettleDate").alias("Date"),
+            col("Amount").cast(DataType::Float64),
+            col("Description"),
+            col("Symbol"),
+        ])
+        .with_column(lit("Stock").alias("Category"));
+
+    Ok(df)
 }
 
 #[cfg(test)]
@@ -70,6 +99,6 @@ mod tests {
 
     #[test]
     fn parse() {
-        let _df = super::Ubs::parse(TRANSACTIONS.into()).unwrap();
+        let _df = super::Ibkr::parse(TRANSACTIONS.into()).unwrap();
     }
 }

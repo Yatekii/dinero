@@ -6,9 +6,9 @@ use polars_plan::dsl::col;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::realms::portfolio::state::Ledger;
+use crate::realms::portfolio::state::Account;
 use crate::state::{PortfolioAdapter, PortfolioState};
-use crate::{banks, cli::Format, error::AppError};
+use crate::{banks, cli::BankFormat, error::AppError};
 
 #[debug_handler]
 pub async fn handler(
@@ -83,12 +83,12 @@ pub async fn handler(
     let mut guard = state.lock().await;
     guard.accounts.insert(
         id.clone(),
-        Ledger {
+        Account {
             id: id.clone(),
             name,
             currency,
             format,
-            transactions: df,
+            ledgers: df,
             initial_balance: payload.initial_balance,
             initial_date: payload.initial_date,
             spending: payload.spending,
@@ -97,12 +97,12 @@ pub async fn handler(
     adapter.store(&guard)?;
     let account = guard.accounts.get(&id).unwrap();
     Ok(Json(CreateLedgerResponse {
-        account: Ledger {
+        account: Account {
             id: account.id.clone(),
             name: account.name.clone(),
             currency: account.currency.clone(),
             format,
-            transactions: account.transactions.clone(),
+            ledgers: account.ledgers.clone(),
             initial_balance: account.initial_balance,
             initial_date: account.initial_date,
             spending: account.spending,
@@ -114,7 +114,7 @@ pub async fn handler(
 #[ts(export)]
 pub struct CreateLedgerRequest {
     pub transactions_data: String,
-    pub format: Format,
+    pub format: BankFormat,
     pub initial_balance: Option<f64>,
     #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,
@@ -126,5 +126,5 @@ pub struct CreateLedgerRequest {
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct CreateLedgerResponse {
-    pub account: Ledger,
+    pub account: Account,
 }

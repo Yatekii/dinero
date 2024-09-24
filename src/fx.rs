@@ -73,7 +73,7 @@ impl HistoryCache {
         let client = reqwest::Client::builder().user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36").build()?;
         let response = client
             .get(&format!(
-                "https://query1.finance.yahoo.com/v7/finance/download/{from}{to}=X?period1={}&period2={}&interval={}&events=history&includeAdjustedClose=true",
+                "https://query2.finance.yahoo.com/v8/finance/chart/{from}{to}=X?period1={}&period2={}&interval={}&events=history&includeAdjustedClose=true",
                 start,
                 end,
                 interval,

@@ -20,7 +20,7 @@ pub async fn handler(
     let guard = state.lock().await;
     let mut spending = HashMap::new();
     for (id, account) in &guard.accounts {
-        let categories = account.transactions.clone().lazy();
+        let categories = account.ledgers.clone().lazy();
 
         let categories = if let Some(from) = &date_range.from {
             categories.filter(col("Date").gt_eq(lit(*from / 1000 / 60 / 60 / 24)))

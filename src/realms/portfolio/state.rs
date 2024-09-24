@@ -7,12 +7,12 @@ use serde::{Deserialize, Deserializer, Serialize};
 use time::macros::format_description;
 use ts_rs::TS;
 
-use crate::cli::Format;
+use crate::cli::BankFormat;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Portfolio {
     pub stocks: Vec<Stock>,
-    pub accounts: HashMap<String, Ledger>,
+    pub accounts: HashMap<String, Account>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -20,7 +20,7 @@ pub struct SerdePortfolio {
     #[serde(default)]
     pub stocks: Vec<Stock>,
     #[serde(default)]
-    pub accounts: HashMap<String, SerdeLedger>,
+    pub accounts: HashMap<String, SerdeAccount>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,11 +31,11 @@ pub struct Stock {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SerdeLedger {
+pub struct SerdeAccount {
     pub id: String,
     pub name: String,
     pub currency: String,
-    pub format: Format,
+    pub format: BankFormat,
     pub initial_balance: Option<f64>,
     pub initial_date: Option<NaiveDate>,
     pub spending: bool,
@@ -43,15 +43,15 @@ pub struct SerdeLedger {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct Ledger {
+pub struct Account {
     pub id: String,
     pub name: String,
     pub currency: String,
-    pub format: Format,
+    pub format: BankFormat,
     #[ts(type = "{
         columns: { values: number[] }[];
     }")]
-    pub transactions: DataFrame,
+    pub ledgers: DataFrame,
     pub initial_balance: Option<f64>,
     #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,

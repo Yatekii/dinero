@@ -32,7 +32,7 @@ mod tests {
             )),
             Json(CreateLedgerRequest {
                 transactions_data: TEST_TRANSACTION_DATA_FULL.into(),
-                format: crate::cli::Format::Neon,
+                format: crate::cli::BankFormat::Neon,
                 initial_balance: Some(42.),
                 initial_date: Some(NaiveDate::from_ymd_opt(2019, 1, 1).unwrap()),
                 name: name.into(),
@@ -52,7 +52,7 @@ mod tests {
 
         let sum = response
             .account
-            .transactions
+            .ledgers
             .column("balance")
             .unwrap()
             .f64()
@@ -71,7 +71,7 @@ mod tests {
             State((Arc::new(portfolio::adapter::Test), state.clone())),
             Json(CreateLedgerRequest {
                 transactions_data: TEST_TRANSACTION_DATA_HALF.into(),
-                format: crate::cli::Format::Neon,
+                format: crate::cli::BankFormat::Neon,
                 initial_balance: Some(42.),
                 initial_date: Some(NaiveDate::from_ymd_opt(2019, 1, 1).unwrap()),
                 name: name.into(),
@@ -101,7 +101,7 @@ mod tests {
 
         let sum = response
             .ledger
-            .transactions
+            .ledgers
             .column("balance")
             .unwrap()
             .f64()
@@ -122,7 +122,7 @@ mod tests {
 
         let sum = response
             .ledger
-            .transactions
+            .ledgers
             .column("balance")
             .unwrap()
             .f64()
