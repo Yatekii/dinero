@@ -1,5 +1,4 @@
 mod banks;
-mod brokers;
 mod cli;
 mod error;
 pub mod fx;
@@ -38,9 +37,9 @@ async fn serve() -> anyhow::Result<()> {
             .route("/ledgers/summary", get(handler::ledger::summary::handler))
             .route(
                 "/ledger/:id",
-                get(handler::ledger::get::handler).post(handler::ledger::update::handler),
+                get(handler::ledger::get::handler), // .post(handler::ledger::update::handler),
             )
-            .route("/ledger", post(handler::ledger::create::handler))
+            // .route("/ledger", post(handler::ledger::create::handler))
             .with_state(AppState::new()?)
             .layer(
                 CorsLayer::new()

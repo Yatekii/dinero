@@ -5,8 +5,8 @@ use axum::{
     extract::{Query, State},
     Json,
 };
-use polars::lazy::frame::IntoLazy;
-use polars_plan::{dsl::col, logical_plan::lit};
+use chrono::NaiveDate;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -20,34 +20,29 @@ pub async fn handler(
     let guard = state.lock().await;
     let mut spending = HashMap::new();
     for (id, account) in &guard.accounts {
-        let categories = account.ledgers.clone().lazy();
+        let categories = account.records.clone();
 
         let categories = if let Some(from) = &date_range.from {
-            categories.filter(col("Date").gt_eq(lit(*from / 1000 / 60 / 60 / 24)))
+            let from =
+                NaiveDate::from_num_days_from_ce_opt((*from / 1000 / 60 / 60 / 24) as i32).unwrap();
+            categories.into_iter().filter(|v| v.date >= from).collect()
         } else {
             categories
         };
 
         let categories = if let Some(to) = &date_range.to {
-            categories.filter(col("Date").lt_eq(lit(*to / 1000 / 60 / 60 / 24)))
+            let to =
+                NaiveDate::from_num_days_from_ce_opt((*to / 1000 / 60 / 60 / 24) as i32).unwrap();
+            categories.into_iter().filter(|v| v.date <= to).collect()
         } else {
             categories
         };
 
         let categories = categories
-            .group_by([col("category")])
-            .agg([col("Amount").sum().alias("total")])
-            .collect()
-            .unwrap();
-
-        let columns = categories.columns(["category", "total"])?;
-
-        let categories: HashMap<_, _> = columns[0]
-            .str()
-            .unwrap()
             .into_iter()
-            .zip(columns[1].f64().unwrap().into_iter())
-            .map(|(c, t)| (c.unwrap().to_string(), t.unwrap()))
+            .group_by(|v| v.category.clone())
+            .into_iter()
+            .map(|(k, v)| (k.clone(), v.into_iter().map(|v| v.amount).sum()))
             .collect();
 
         spending.insert(id.clone(), SpendingSummary { categories });

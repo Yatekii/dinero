@@ -8,7 +8,7 @@ import {
 } from "@tremor/react";
 import { SpendPerMonth } from "../bindings/SpendPerMonth";
 import { useEffect, useState } from "react";
-import { Ledger } from "../bindings/Ledger";
+import { Account } from "../bindings/Account";
 
 export function SpendBreakdownTransactions({
   presets,
@@ -16,7 +16,7 @@ export function SpendBreakdownTransactions({
   spend_per_month: SpendPerMonth;
   presets: Preset[];
 }) {
-  const [data, setData] = useState(undefined as Ledger | undefined);
+  const [data, setData] = useState(undefined as Account | undefined);
 
   useEffect(() => {
     const load = async () => {
@@ -27,7 +27,7 @@ export function SpendBreakdownTransactions({
       const response = await fetch(
         `http://127.0.0.1:3000/ledger/neon?from=${from}&to=${to}`
       );
-      const data = (await response.json()) as Ledger;
+      const data = (await response.json()) as Account;
       console.log(data);
       setData(data);
     };
@@ -49,25 +49,18 @@ export function SpendBreakdownTransactions({
             </TableRow>
           </TableHead>
           <TableBody>
-            {[...Array(data.transactions.columns[0].values.length).keys()]
-              .map((i) => [
-                data.transactions.columns[0].values[i],
-                data.transactions.columns[1].values[i],
-                data.transactions.columns[4].values[i],
-                data.transactions.columns[3].values[i],
-              ])
-              .map((item, i) => (
-                <TableRow key={i}>
-                  <TableCell className="text-right">
-                    {new Date(item[0] * 24 * 60 * 60 * 1000).toDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {item[1]?.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">{item[2]}</TableCell>
-                  <TableCell className="text-right">{item[3]}</TableCell>
-                </TableRow>
-              ))}
+            {data.records.map((item, i) => (
+              <TableRow key={i}>
+                <TableCell className="text-right">
+                  {new Date(item.date).toDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {item.amount?.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right">{item.description}</TableCell>
+                <TableCell className="text-right">{item.category}</TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       )}

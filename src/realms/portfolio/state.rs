@@ -2,21 +2,22 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use chrono::NaiveDate;
-use polars::frame::DataFrame;
 use serde::{Deserialize, Deserializer, Serialize};
 use time::macros::format_description;
 use ts_rs::TS;
 
-use crate::cli::BankFormat;
+use crate::{banks::ExtendedLedgerRecord, cli::BankFormat};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Portfolio {
+    pub base_currency: String,
     pub stocks: Vec<Stock>,
     pub accounts: HashMap<String, Account>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SerdePortfolio {
+    pub base_currency: String,
     #[serde(default)]
     pub stocks: Vec<Stock>,
     #[serde(default)]
@@ -48,10 +49,7 @@ pub struct Account {
     pub name: String,
     pub currency: String,
     pub format: BankFormat,
-    #[ts(type = "{
-        columns: { values: number[] }[];
-    }")]
-    pub ledgers: DataFrame,
+    pub records: Vec<ExtendedLedgerRecord>,
     pub initial_balance: Option<f64>,
     #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,

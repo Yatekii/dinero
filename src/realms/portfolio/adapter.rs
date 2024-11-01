@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fs::File, path::PathBuf};
 
 use anyhow::Result;
-use polars::io::parquet::write::ParquetWriter;
 
 use crate::{banks::load, processing::process};
 
@@ -48,17 +47,19 @@ impl Adapter for Production {
         serde_yaml::to_writer(
             std::fs::File::create("portfolio/portfolio.yaml")?,
             &SerdePortfolio {
+                base_currency: portfolio.base_currency.clone(),
                 accounts,
                 stocks: vec![],
             },
         )?;
         let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
         std::fs::create_dir_all(&path)?;
-        for (id, ledger) in &portfolio.accounts {
-            let mut file = std::fs::File::create(path.join(format!("{}.parquet", id)))?;
-            let mut df = ledger.ledgers.clone();
-            ParquetWriter::new(&mut file).finish(&mut df)?;
-        }
+        // TODO:
+        // for (id, ledger) in &portfolio.accounts {
+        //     // let mut file = std::fs::File::create(path.join(format!("{}.parquet", id)))?;
+        //     // let mut df = ledger.ledgers.clone();
+        //     // ParquetWriter::new(&mut file).finish(&mut df)?;
+        // }
         Ok(())
     }
 
@@ -75,12 +76,12 @@ impl Adapter for Production {
                 Ok((
                     id.clone(),
                     Account {
-                        id,
+                        id: id.clone(),
                         name: account.name,
                         currency: account.currency,
                         format: account.format,
-                        ledgers: process(
-                            load(path, account.format)?,
+                        records: process(
+                            load(id, path, account.format)?,
                             account.initial_balance,
                             account.initial_date,
                         )?,
@@ -93,6 +94,7 @@ impl Adapter for Production {
             .collect::<Result<HashMap<_, _>>>()?;
 
         Ok(Portfolio {
+            base_currency: portfolio.base_currency,
             stocks: vec![],
             accounts,
         })

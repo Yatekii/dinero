@@ -1,55 +1,74 @@
 use std::io::Cursor;
 
-use polars::{
-    datatypes::DataType,
-    io::SerReader,
-    lazy::{
-        dsl::{col, lit},
-        frame::IntoLazy,
-    },
-    prelude::*,
-};
+use chrono::{NaiveDate, NaiveTime};
+use csv::ReaderBuilder;
 
-use super::{ParsedAccount, ParsedLedger, Parser};
+use super::{LedgerRecord, ParsedAccount, ParsedLedger, Parser};
 
 pub struct Ubs {}
 
 impl Parser for Ubs {
-    fn parse(content: String) -> anyhow::Result<ParsedAccount> {
-        let df = CsvReadOptions::default()
-            .with_parse_options(
-                CsvParseOptions::default()
-                    .with_separator(b';')
-                    .with_try_parse_dates(true)
-                    .with_truncate_ragged_lines(true),
-            )
-            .with_has_header(true)
-            .into_reader_with_file_handle(Cursor::new(&content))
-            .finish()?;
-
-        let df = df
-            .lazy()
-            .reverse()
-            .select(&[
-                col("Booking date").alias("Date"),
-                col("Debit")
-                    .fill_null(col("Credit"))
-                    .alias("Amount")
-                    .str()
-                    .replace(lit("'"), lit(""), true)
-                    .cast(DataType::Float64),
-                col("Description1").alias("Description"),
-            ])
-            .with_column(lit("").alias("Category"))
-            .with_column(lit("").alias("Symbol"));
+    fn parse(name: String, content: String) -> anyhow::Result<ParsedAccount> {
+        let records = ReaderBuilder::new()
+            .delimiter(b';')
+            .from_reader(Cursor::new(&content))
+            .deserialize::<Record>()
+            .map(|v| {
+                v.map(|v| {
+                    v.booking_date.map(|date| LedgerRecord {
+                        date,
+                        amount: v
+                            .debit
+                            .or(v.credit)
+                            .unwrap()
+                            .replace("'", "")
+                            .parse()
+                            .unwrap(),
+                        description: v.description_1.unwrap_or_default(),
+                        category: "".to_string(),
+                        symbol: "CHF".to_string(),
+                    })
+                })
+            })
+            .filter_map(|v| v.transpose())
+            .collect::<Result<_, _>>()?;
 
         Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger {
-                name: "".into(),
-                df,
-            }],
+            ledgers: vec![ParsedLedger { name, records }],
         })
     }
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct Record {
+    #[serde(rename = "Trade date")]
+    _trade_date: Option<NaiveDate>,
+    #[serde(rename = "Trade time")]
+    _trade_time: Option<NaiveTime>,
+    #[serde(rename = "Booking date")]
+    booking_date: Option<NaiveDate>,
+    #[serde(rename = "Value date")]
+    _value_date: Option<NaiveDate>,
+    #[serde(rename = "Currency")]
+    _currency: Option<String>,
+    #[serde(rename = "Debit")]
+    debit: Option<String>,
+    #[serde(rename = "Credit")]
+    credit: Option<String>,
+    #[serde(rename = "Individual amount")]
+    _individual_amount: Option<f64>,
+    #[serde(rename = "Balance")]
+    _balance: Option<f64>,
+    #[serde(rename = "Transaction no.")]
+    _transaction_no: Option<String>,
+    #[serde(rename = "Description1")]
+    description_1: Option<String>,
+    #[serde(rename = "Description2")]
+    _description_2: Option<String>,
+    #[serde(rename = "Description3")]
+    _description_3: Option<String>,
+    #[serde(rename = "Footnotes")]
+    _footnotes: Option<String>,
 }
 
 #[cfg(test)]
@@ -70,6 +89,8 @@ mod tests {
 
     #[test]
     fn parse() {
-        let _df = super::Ubs::parse(TRANSACTIONS.into()).unwrap();
+        insta::assert_debug_snapshot!(
+            super::Ubs::parse("UBS".to_string(), TRANSACTIONS.into()).unwrap()
+        );
     }
 }

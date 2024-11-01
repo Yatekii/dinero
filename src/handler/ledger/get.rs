@@ -5,10 +5,11 @@ use axum::{
     Json,
 };
 use chrono::NaiveDate;
-use polars::lazy::frame::IntoLazy;
-use polars_plan::dsl::{col, lit};
 
-use crate::{error::AppError, realms::portfolio::state::Account, state::PortfolioState};
+use crate::{
+    banks::ExtendedLedgerRecord, error::AppError, realms::portfolio::state::Account,
+    state::PortfolioState,
+};
 
 #[debug_handler]
 pub async fn handler(
@@ -22,16 +23,16 @@ pub async fn handler(
         return Err(anyhow!("{id} was not found"))?;
     };
 
-    let mut transactions = account.ledgers.clone().lazy();
+    let mut transactions: Vec<ExtendedLedgerRecord> = account.records.clone();
 
     if let Some(from) = filter.from {
         let from = NaiveDate::parse_from_str(&from, "%Y-%m-%d")?;
-        transactions = transactions.filter(col("Date").gt_eq(lit(from)))
+        transactions.retain(|v| v.date >= from);
     }
 
     if let Some(to) = filter.to {
         let to = NaiveDate::parse_from_str(&to, "%Y-%m-%d")?;
-        transactions = transactions.filter(col("Date").lt_eq(lit(to)))
+        transactions.retain(|v| v.date <= to);
     }
 
     let account = Account {
@@ -39,7 +40,7 @@ pub async fn handler(
         name: account.name.clone(),
         currency: account.currency.clone(),
         format: account.format,
-        ledgers: transactions.collect()?,
+        records: transactions,
         initial_balance: account.initial_balance,
         initial_date: account.initial_date,
         spending: account.spending,

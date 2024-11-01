@@ -15,9 +15,7 @@ export default function NetWorth({
 
   for (let i = 0; i < total_balance.timestamps.length; i++) {
     data.push({
-      date: new Date(
-        (total_balance.timestamps[i] ?? 0) * 24 * 60 * 60 * 1000
-      ).toDateString(),
+      date: new Date((total_balance.timestamps[i] ?? 0) * 1000).toDateString(),
     });
     for (const entry of total_balance.balances) {
       data[i][entry.name] = entry.series[i] ?? 0;
@@ -39,7 +37,7 @@ export default function NetWorth({
         yAxisWidth={65}
         categories={categories}
         connectNulls={true}
-        colors={["indigo", "cyan", "orange", "yellow"]}
+        colors={["indigo", "cyan", "orange", "yellow", "red"]}
         valueFormatter={valueFormatter}
         stack={true}
         xAxisLabel="Date"

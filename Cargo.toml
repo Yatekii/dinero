@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+csv = "*"
 yahoo = { package = "yahoo_finance_api", version = "2" }
 tokio = { version = "1", features = ["full"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
@@ -40,3 +41,6 @@ float-cmp = "0.9"
 ts-rs = { version = "8.1", features = ["serde-compat"] }
 itertools = "0.12.1"
 chrono = { version = "0.4.37", features = ["serde"] }
+
+[dev-dependencies]
+insta = { version = "*" }

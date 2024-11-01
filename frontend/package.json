@@ -15,7 +15,7 @@
     "@heroicons/react": "^2",
     "@remixicon/react": "^4.1.1",
     "@tanstack/react-table": "^8.15.3",
-    "@tremor/react": "^3.17.2",
+    "@tremor/react": "^3.18.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.3",

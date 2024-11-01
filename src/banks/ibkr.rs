@@ -1,46 +1,37 @@
 use std::io::Cursor;
 
-use anyhow::bail;
-use polars::{io::SerReader, prelude::*};
+use anyhow::{bail, Error};
+use chrono::NaiveDate;
+use csv::{Reader, ReaderBuilder};
 
-use super::{ParsedAccount, Parser};
+use super::{LedgerRecord, ParsedAccount, Parser};
 
 pub struct Ibkr {}
 
 impl Parser for Ibkr {
-    fn parse(content: String) -> anyhow::Result<ParsedAccount> {
+    fn parse(name: String, content: String) -> anyhow::Result<ParsedAccount> {
         let mut ledgers = vec![];
         let lines = content.lines().collect::<Vec<_>>();
         let mut end = lines.len();
-        #[allow(clippy::never_loop)]
         for (index, line) in lines.iter().enumerate().rev() {
             if line.starts_with("\"HEADER\"") {
                 let content = &lines[index..end].join("\n");
 
-                let df = CsvReadOptions::default()
-                    .with_parse_options(
-                        CsvParseOptions::default()
-                            .with_separator(b',')
-                            .with_try_parse_dates(true)
-                            .with_truncate_ragged_lines(true),
-                    )
-                    .with_has_header(true)
-                    .into_reader_with_file_handle(Cursor::new(&content))
-                    .finish()?;
+                let reader = ReaderBuilder::new()
+                    .delimiter(b',')
+                    .from_reader(Cursor::new(&content));
 
-                let df = if line.contains("\"CTRN\"") {
-                    parse_cash_transactions(df)?
+                let records = if line.contains("\"CTRN\"") {
+                    parse_cash_transactions(reader)?
                 } else if line.contains("\"TRNT\"") {
-                    parse_stock_transactions(df)?
+                    parse_stock_transactions(reader)?
                 } else {
                     bail!("Unknown export")
                 };
 
-                dbg!(&df.clone().collect());
-
                 ledgers.push(super::ParsedLedger {
-                    name: "".into(),
-                    df,
+                    name: name.clone(),
+                    records,
                 });
 
                 end = index;
@@ -51,34 +42,66 @@ impl Parser for Ibkr {
     }
 }
 
-fn parse_stock_transactions(df: DataFrame) -> Result<LazyFrame, PolarsError> {
-    let df = df
-        .lazy()
-        .reverse()
-        .select(&[
-            col("TradeDate").alias("Date"),
-            col("Quantity").alias("Amount").cast(DataType::Float64),
-            col("Description"),
-            col("Symbol"),
-        ])
-        .with_column(lit("Broker").alias("Category"));
+fn parse_stock_transactions(
+    mut reader: Reader<Cursor<&&String>>,
+) -> Result<Vec<LedgerRecord>, Error> {
+    let records = reader
+        .deserialize::<StockRecord>()
+        .map(|v| {
+            v.map(|v| LedgerRecord {
+                date: v.date,
+                amount: v.amount,
+                description: v.description,
+                category: "Broker".to_string(),
+                symbol: v.symbol,
+            })
+        })
+        .collect::<Result<_, _>>()?;
 
-    Ok(df)
+    Ok(records)
 }
 
-fn parse_cash_transactions(df: DataFrame) -> Result<LazyFrame, PolarsError> {
-    let df = df
-        .lazy()
-        .reverse()
-        .select(&[
-            col("SettleDate").alias("Date"),
-            col("Amount").cast(DataType::Float64),
-            col("Description"),
-            col("Symbol"),
-        ])
-        .with_column(lit("Stock").alias("Category"));
+#[derive(Debug, serde::Deserialize)]
+struct StockRecord {
+    #[serde(rename = "TradeDate")]
+    date: NaiveDate,
+    #[serde(rename = "Quantity")]
+    amount: f64,
+    #[serde(rename = "Description")]
+    description: String,
+    #[serde(rename = "Symbol")]
+    symbol: String,
+}
 
-    Ok(df)
+fn parse_cash_transactions(
+    mut reader: Reader<Cursor<&&String>>,
+) -> Result<Vec<LedgerRecord>, Error> {
+    let records = reader
+        .deserialize::<CashRecord>()
+        .map(|v| {
+            v.map(|v| LedgerRecord {
+                date: v.date,
+                amount: v.amount,
+                description: v.description,
+                category: "Broker".to_string(),
+                symbol: v.symbol,
+            })
+        })
+        .collect::<Result<_, _>>()?;
+
+    Ok(records)
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct CashRecord {
+    #[serde(rename = "SettleDate")]
+    date: NaiveDate,
+    #[serde(rename = "Amount")]
+    amount: f64,
+    #[serde(rename = "Description")]
+    description: String,
+    #[serde(rename = "Symbol")]
+    symbol: String,
 }
 
 #[cfg(test)]
@@ -99,6 +122,6 @@ mod tests {
 
     #[test]
     fn parse() {
-        let _df = super::Ibkr::parse(TRANSACTIONS.into()).unwrap();
+        let _df = super::Ibkr::parse("IBKR".to_string(), TRANSACTIONS.into()).unwrap();
     }
 }
