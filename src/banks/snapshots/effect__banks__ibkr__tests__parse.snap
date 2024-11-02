@@ -1,0 +1,67 @@
+---
+source: src/banks/ibkr.rs
+expression: "super::Ibkr::parse(\"IBKR\".to_string(), TRANSACTIONS.into()).unwrap()"
+---
+ParsedAccount {
+    ledgers: [
+        ParsedLedger {
+            name: "IBKR",
+            records: [
+                LedgerRecord {
+                    date: 2024-02-15,
+                    amount: -0.72,
+                    description: "AAPL(US0378331005) CASH DIVIDEND USD 0.24 PER SHARE - US TAX",
+                    category: "Broker",
+                    symbol: "AAPL",
+                },
+                LedgerRecord {
+                    date: 2024-03-20,
+                    amount: -16.03,
+                    description: "VT(US9220427424) CASH DIVIDEND USD 0.4212 PER SHARE - US TAX",
+                    category: "Broker",
+                    symbol: "VT",
+                },
+                LedgerRecord {
+                    date: 2024-05-16,
+                    amount: -0.75,
+                    description: "AAPL(US0378331005) CASH DIVIDEND USD 0.25 PER SHARE - US TAX",
+                    category: "Broker",
+                    symbol: "AAPL",
+                },
+                LedgerRecord {
+                    date: 2024-06-17,
+                    amount: -0.6,
+                    description: "GOOGL(US02079K3059) CASH DIVIDEND USD 0.20 PER SHARE - US TAX",
+                    category: "Broker",
+                    symbol: "GOOGL",
+                },
+                LedgerRecord {
+                    date: 2024-06-25,
+                    amount: -22.0,
+                    description: "VT(US9220427424) CASH DIVIDEND USD 0.5779 PER SHARE - US TAX",
+                    category: "Broker",
+                    symbol: "VT",
+                },
+                LedgerRecord {
+                    date: 2024-06-20,
+                    amount: 69980.0,
+                    description: "CASH RECEIPTS / ELECTRONIC FUND TRANSFERS",
+                    category: "Broker",
+                    symbol: "",
+                },
+            ],
+        },
+        ParsedLedger {
+            name: "IBKR",
+            records: [
+                LedgerRecord {
+                    date: 2024-06-24,
+                    amount: 100.0,
+                    description: "VANGUARD TOT WORLD STK ETF",
+                    category: "Broker",
+                    symbol: "VT",
+                },
+            ],
+        },
+    ],
+}
