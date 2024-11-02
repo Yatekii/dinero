@@ -25,12 +25,6 @@ pub struct Serve {}
 pub enum BankFormat {
     Ubs,
     Neon,
-    Ibkr,
-}
-
-#[derive(ValueEnum, Clone, Debug, Serialize, Deserialize, TS, Copy)]
-#[serde(rename_all = "lowercase")]
-#[ts(export)]
-pub enum BrokerFormat {
+    Revolut,
     Ibkr,
 }

@@ -1,5 +1,6 @@
 mod ibkr;
 mod neon;
+mod revolut;
 mod ubs;
 
 use std::path::Path;
@@ -15,6 +16,7 @@ pub fn parse(name: String, content: String, format: BankFormat) -> Result<Vec<Le
         BankFormat::Neon => neon::Neon::parse(name, content),
         BankFormat::Ubs => ubs::Ubs::parse(name, content),
         BankFormat::Ibkr => ibkr::Ibkr::parse(name, content),
+        BankFormat::Revolut => revolut::Revolut::parse(name, content),
     }?
     .ledgers[0]
         .records
@@ -30,6 +32,7 @@ pub fn load(
         BankFormat::Neon => load_inner::<neon::Neon>(name, path),
         BankFormat::Ubs => load_inner::<ubs::Ubs>(name, path),
         BankFormat::Ibkr => load_inner::<ibkr::Ibkr>(name, path),
+        BankFormat::Revolut => load_inner::<revolut::Revolut>(name, path),
     }
 }
 
