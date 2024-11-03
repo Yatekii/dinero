@@ -1,16 +1,36 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    sync::Arc,
+    fmt::Display,
 };
 
 use anyhow::Result;
-use chrono::{Days, NaiveDate, NaiveTime, Utc};
+use chrono::{DateTime, Datelike, Days, NaiveDate, NaiveTime, Utc};
 use reqwest::StatusCode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
+pub enum Currency {
+    CHF,
+    USD,
+    EUR,
+    JPY,
+}
+
+impl Display for Currency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Currency::CHF => f.write_str("CHF"),
+            Currency::USD => f.write_str("USD"),
+            Currency::EUR => f.write_str("EUR"),
+            Currency::JPY => f.write_str("JPY"),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct HistoryCache {
-    pub fx: HashMap<(String, String), Arc<Pair>>,
+    pub fx: HashMap<(Currency, Currency), Pair>,
 }
 
 impl HistoryCache {
@@ -24,60 +44,49 @@ impl HistoryCache {
         for file in std::fs::read_dir("portfolio/fx")? {
             let file = file?;
             let path = file.path();
-            let mut split = path.file_stem().unwrap().to_str().unwrap().split(':');
-            let from: String = split.next().unwrap().into();
-            let to: String = split.next().unwrap().into();
             let file = std::fs::File::open(path)?;
-            let df = serde_json::from_reader(file).unwrap();
-            fx.insert(
-                (from.clone(), to.clone()),
-                Arc::new(Pair {
-                    from,
-                    to,
-                    dirty: false,
-                    rates: df,
-                }),
-            );
+            let pair: Pair = serde_json::from_reader(file).unwrap();
+            fx.insert((pair.from, pair.to), pair);
         }
         Ok(Self { fx })
     }
 
-    pub async fn get(&mut self, from: &str, to: &str) -> Result<Arc<Pair>> {
+    pub async fn get<'a: 'b, 'b>(&'a mut self, from: Currency, to: Currency) -> Result<&'b Pair> {
         let start = NaiveDate::from_ymd_opt(2016, 1, 1).unwrap();
-        let end = Utc::now().naive_local().date();
-
-        if let Some(rate) = self.fx.get(&(from.into(), to.into())) {
-            let x = rate
-                .rates
-                .first_key_value()
-                .map_or(NaiveDate::MIN, |r| *r.0);
-            if end < (x) {
-                println!("{end} < {x}");
-                return Ok(rate.clone());
-            }
-        }
-        let interval = "1d";
-
-        let client = reqwest::Client::builder().user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36").build()?;
-        let response = client
-            .get(&format!(
-                "https://query2.finance.yahoo.com/v8/finance/chart/{from}{to}=X?period1={}&period2={}&interval={}&events=history&includeAdjustedClose=true",
-                start.and_time(NaiveTime::default()).and_utc().timestamp(),
-                end.and_time(NaiveTime::default()).and_utc().timestamp(),
-                interval,
-            ))
-            .send()
-            .await?;
-
-        if response.status() != StatusCode::OK {
-            panic!("{from}{to}: {}", response.text().await?);
+        let mut end = Utc::now().naive_local().date();
+        end = match end.weekday() {
+            chrono::Weekday::Sat => end.checked_sub_days(Days::new(1)).unwrap(),
+            chrono::Weekday::Sun => end.checked_sub_days(Days::new(2)).unwrap(),
+            _ => end,
         };
-        let rate: Rate = response.json().await?;
 
-        if let Some(error) = rate.chart.error {
-            anyhow::bail!("{error}");
+        dbg!(end);
+
+        if self.fx.contains_key(&(from, to)) {
+            let rate = self.fx.get(&(from, to)).unwrap();
+            let x = rate.rates.last_key_value().map_or(NaiveDate::MIN, |r| *r.0);
+            println!("{x}");
+            if end <= (x) {
+                println!("{end} <= {x}");
+                Ok(self.fx.get(&(from, to)).unwrap())
+            } else {
+                self.update_rates(start, end, from, to).await?;
+                Ok(self.fx.get(&(from, to)).unwrap())
+            }
+        } else {
+            self.update_rates(start, end, from, to).await?;
+            Ok(self.fx.get(&(from, to)).unwrap())
         }
+    }
 
+    async fn update_rates(
+        &mut self,
+        start: NaiveDate,
+        end: NaiveDate,
+        from: Currency,
+        to: Currency,
+    ) -> Result<(), anyhow::Error> {
+        let rate = fetch_rates(start, end, from, to).await?;
         let quotes = rate
             .chart
             .result
@@ -89,8 +98,7 @@ impl HistoryCache {
             .unwrap()
             .close
             .iter()
-            .copied()
-            .flatten();
+            .copied();
         let dates = rate
             .chart
             .result
@@ -104,31 +112,63 @@ impl HistoryCache {
                     .checked_add_days(Days::new(v / 3600 / 24))
                     .unwrap()
             });
-        let pair = Arc::new(Pair {
-            from: from.into(),
-            to: to.into(),
+        let pair = Pair {
+            from,
+            to,
             dirty: true,
-            rates: dates.zip(quotes).collect(),
-        });
-
-        self.fx.insert((from.into(), to.into()), pair.clone());
+            rates: dates
+                .zip(quotes)
+                .filter_map(|(d, q)| q.map(|q| (d, q)))
+                .collect(),
+        };
+        self.fx.insert((from, to), pair);
+        println!("SAVE");
         self.save()?;
-
-        Ok(pair)
+        Ok(())
     }
 
-    pub fn save(&self) -> Result<()> {
-        for entry in self.fx.values() {
+    pub fn save(&mut self) -> Result<()> {
+        for entry in self.fx.values_mut() {
+            println!("DIRTY: {}", entry.dirty);
             if entry.dirty {
                 let mut file = std::fs::File::create(format!(
                     "portfolio/fx/{}:{}.json",
                     entry.from, entry.to
                 ))?;
-                serde_json::to_writer(&mut file, &entry.rates)?;
+                serde_json::to_writer(&mut file, &entry)?;
+                entry.dirty = false;
             }
         }
         Ok(())
     }
+}
+
+async fn fetch_rates(
+    start: NaiveDate,
+    end: NaiveDate,
+    from: Currency,
+    to: Currency,
+) -> Result<Rate, anyhow::Error> {
+    let interval = "1d";
+    let client = reqwest::Client::builder().user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36").build()?;
+    let response = client
+        .get(dbg!(&format!(
+            "https://query2.finance.yahoo.com/v8/finance/chart/{from}{to}=X?period1={}&period2={}&interval={interval}&events=history&includeAdjustedClose=true",
+            start.and_time(NaiveTime::default()).and_utc().timestamp(),
+            end.and_time(NaiveTime::default()).and_utc().timestamp(),
+        )))
+        .send()
+        .await?;
+    if response.status() != StatusCode::OK {
+        panic!("{from}{to}: {}", response.text().await?);
+    };
+    let rate: Rate = response.json().await?;
+    dbg!(rate.chart.result[0].indicators.quote[0].close.len());
+    dbg!(rate.chart.result[0].timestamp.last());
+    if let Some(error) = rate.chart.error {
+        anyhow::bail!("{error}");
+    }
+    Ok(rate)
 }
 
 impl Default for HistoryCache {
@@ -137,10 +177,11 @@ impl Default for HistoryCache {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Pair {
-    pub from: String,
-    pub to: String,
+    pub from: Currency,
+    pub to: Currency,
+    #[serde(default)]
     pub dirty: bool,
     pub rates: BTreeMap<NaiveDate, f64>,
 }

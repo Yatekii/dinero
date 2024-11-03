@@ -6,18 +6,18 @@ use serde::{Deserialize, Deserializer, Serialize};
 use time::macros::format_description;
 use ts_rs::TS;
 
-use crate::{banks::ExtendedLedgerRecord, cli::BankFormat};
+use crate::{banks::ExtendedLedgerRecord, cli::BankFormat, fx::Currency};
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Portfolio {
-    pub base_currency: String,
+    pub base_currency: Currency,
     pub stocks: Vec<Stock>,
     pub accounts: HashMap<String, Account>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SerdePortfolio {
-    pub base_currency: String,
+    pub base_currency: Currency,
     #[serde(default)]
     pub stocks: Vec<Stock>,
     #[serde(default)]
@@ -35,7 +35,7 @@ pub struct Stock {
 pub struct SerdeAccount {
     pub id: String,
     pub name: String,
-    pub currency: String,
+    pub currency: Currency,
     pub format: BankFormat,
     pub initial_balance: Option<f64>,
     pub initial_date: Option<NaiveDate>,
@@ -47,7 +47,7 @@ pub struct SerdeAccount {
 pub struct Account {
     pub id: String,
     pub name: String,
-    pub currency: String,
+    pub currency: Currency,
     pub format: BankFormat,
     pub records: Vec<ExtendedLedgerRecord>,
     pub initial_balance: Option<f64>,

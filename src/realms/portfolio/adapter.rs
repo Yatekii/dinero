@@ -105,7 +105,11 @@ pub struct Test;
 
 impl Adapter for Test {
     fn load(&self) -> Result<Portfolio> {
-        Ok(Portfolio::default())
+        Ok(Portfolio {
+            base_currency: crate::fx::Currency::CHF,
+            stocks: Default::default(),
+            accounts: Default::default(),
+        })
     }
     fn store(&self, _state: &Portfolio) -> Result<()> {
         Ok(())
