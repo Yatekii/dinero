@@ -102,12 +102,23 @@ pub async fn handler(
             series: transactions,
         });
     }
-    balances.push(PortfolioLedgerData {
-        id: "total".to_string(),
-        name: "Total".to_string(),
-        currency: portfolio.base_currency,
-        series: total,
-    });
+
+    const TAKE: usize = 30;
+    let xs = std::iter::repeat(())
+        .take(TAKE)
+        .enumerate()
+        .map(|(i, _)| i as f64)
+        .collect::<Vec<_>>();
+    let ys = total
+        .iter()
+        .copied()
+        .rev()
+        .take(TAKE)
+        .rev()
+        .collect::<Vec<_>>();
+    let trend_of_total = linear_regression(&xs, &ys);
+
+    let trend_of_total = 0.0;
 
     let mut data = HashMap::new();
     for ledger in portfolio.accounts.values().filter(|a| a.spending) {
