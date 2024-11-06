@@ -93,33 +93,23 @@ export function Ledger() {
             <TableRow>
               <TableHeaderCell className="text-right">Date</TableHeaderCell>
               <TableHeaderCell className="text-right">Amount</TableHeaderCell>
-              <TableHeaderCell className="text-right">Total</TableHeaderCell>
+              <TableHeaderCell className="text-right">
+                Description
+              </TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {[
-              ...Array(
-                currentLedger.transactions.columns[0].values.length
-              ).keys(),
-            ]
-              .map((i) => [
-                currentLedger.transactions.columns[0].values[i],
-                currentLedger.transactions.columns[1].values[i],
-                currentLedger.transactions.columns[2].values[i],
-              ])
-              .map((item, i) => (
-                <TableRow key={i}>
-                  <TableCell className="text-right">
-                    {new Date(item[0] * 24 * 60 * 60 * 1000).toDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {item[1]?.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {item[2]?.toFixed(2)}
-                  </TableCell>
-                </TableRow>
-              ))}
+            {currentLedger.records.map((item, i) => (
+              <TableRow key={i}>
+                <TableCell className="text-right">
+                  {new Date(item.date).toDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {item.amount.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right">{item.description}</TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </Card>

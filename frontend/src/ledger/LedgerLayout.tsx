@@ -33,7 +33,7 @@ function LedgerMenu() {
   const params = useParams();
 
   return (
-    <div className="flex mb-3">
+    <div className="flex items-center mb-3">
       <TabGroup
         index={
           params.ledgerId
@@ -46,7 +46,7 @@ function LedgerMenu() {
             : navigate(`/ledger/${ledgers[index - 1].id}`)
         }
       >
-        <TabList variant="solid">
+        <TabList variant="solid" className="flex flex-wrap p-2">
           <>
             <Tab icon={CakeIcon}>"All"</Tab>
             {ledgers.map((l) => (
@@ -61,7 +61,7 @@ function LedgerMenu() {
         variant="primary"
         onClick={() => navigate(`/ledger/add`)}
         size="sm"
-        className="py-1 px-3"
+        className="ml-2 py-1 px-3"
       >
         Add
       </Button>
