@@ -77,7 +77,7 @@ pub async fn handler(
 
         ledgers.insert(
             ledger.id.clone(),
-            (ledger.name.clone(), ledger.currency.clone(), balances),
+            (ledger.name.clone(), ledger.currency, balances),
         );
     }
 
