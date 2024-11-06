@@ -17,20 +17,20 @@ import { FolderOpenIcon } from "@heroicons/react/24/solid";
 import { Navigate, useLoaderData } from "react-router-dom";
 import { useState } from "react";
 import type { ListLedgerResponse } from "../bindings/ListLedgerResponse";
-import { Ledger } from "../bindings/Ledger";
+import { Account } from "../bindings/Account";
+
+export type Params<Key extends string = string> = {
+  readonly [key in Key]: string | undefined;
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
-export async function ledgerLoader({
-  params,
-}: {
-  params: { ledgerId: string };
-}) {
+export async function ledgerLoader({ params }: { params: Params }) {
   let response = await fetch("http://127.0.0.1:3000/ledgers");
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
   let data = undefined;
   if (params.ledgerId != undefined) {
     response = await fetch(`http://127.0.0.1:3000/ledger/${params.ledgerId}`);
-    data = (await response.json()) as Ledger;
+    data = (await response.json()) as Account;
   }
 
   return { ledgers, currentLedger: data };
