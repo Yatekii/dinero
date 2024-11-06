@@ -65,9 +65,7 @@ impl HistoryCache {
         if self.fx.contains_key(&(from, to)) {
             let rate = self.fx.get(&(from, to)).unwrap();
             let x = rate.rates.last_key_value().map_or(NaiveDate::MIN, |r| *r.0);
-            println!("{x}");
             if end <= (x) {
-                println!("{end} <= {x}");
                 Ok(self.fx.get(&(from, to)).unwrap())
             } else {
                 self.update_rates(start, end, from, to).await?;
@@ -122,14 +120,12 @@ impl HistoryCache {
                 .collect(),
         };
         self.fx.insert((from, to), pair);
-        println!("SAVE");
         self.save()?;
         Ok(())
     }
 
     pub fn save(&mut self) -> Result<()> {
         for entry in self.fx.values_mut() {
-            println!("DIRTY: {}", entry.dirty);
             if entry.dirty {
                 let mut file = std::fs::File::create(format!(
                     "portfolio/fx/{}:{}.json",
