@@ -7,23 +7,23 @@ interface ChartData {
 }
 
 export default function NetWorth({
-  total_balance,
+  totalBalance,
 }: {
-  total_balance: PortfolioLedgersData;
+  totalBalance: PortfolioLedgersData;
 }) {
   const data = [] as ChartData[];
 
-  for (let i = 0; i < total_balance.timestamps.length; i++) {
+  for (let i = 0; i < totalBalance.timestamps.length; i++) {
     data.push({
-      date: new Date((total_balance.timestamps[i] ?? 0) * 1000).toDateString(),
+      date: new Date((totalBalance.timestamps[i] ?? 0) * 1000).toDateString(),
     });
-    for (const entry of total_balance.balances) {
+    for (const entry of totalBalance.balances) {
       data[i][entry.name] = entry.series[i] ?? 0;
     }
   }
 
   const categories = [];
-  for (const entry of total_balance.balances) {
+  for (const entry of totalBalance.balances) {
     categories.push(entry.name);
   }
 

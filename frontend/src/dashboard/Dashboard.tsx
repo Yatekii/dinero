@@ -53,10 +53,10 @@ function Dashboard() {
   return (
     <>
       <div className="mt-5 w-full" />
-      <NetWorth total_balance={data.total_balance} />
+      <NetWorth totalBalance={data.total_balance} />
 
       <div className="mt-5 w-full" />
-      <SpendOverMonth spend_per_month={data.spend_per_month} />
+      <SpendOverMonth spendPerMonth={data.spend_per_month} />
 
       <div className="mt-5 w-full" />
       <Title>Spend Breakdown</Title>
@@ -83,11 +83,11 @@ function Dashboard() {
         </TabList>
       </TabGroup>
       <SpendBreakdown
-        spend_per_month={data.spend_per_month}
+        spendPerMonth={data.spend_per_month}
         presets={[{ month, year }]}
       />
       <SpendBreakdownTransactions
-        spend_per_month={data.spend_per_month}
+        spendPerMonth={data.spend_per_month}
         presets={[{ month, year }]}
       />
     </>

@@ -2,10 +2,10 @@ import { DonutChart } from "@tremor/react";
 import { SpendPerMonth } from "../bindings/SpendPerMonth";
 
 export function SpendBreakdown({
-  spend_per_month,
+  spendPerMonth: spend_per_month,
   presets,
 }: {
-  spend_per_month: SpendPerMonth;
+  spendPerMonth: SpendPerMonth;
   presets: Preset[];
 }) {
   const data = [] as { name: string; value: number }[];

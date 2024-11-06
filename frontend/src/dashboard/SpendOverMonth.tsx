@@ -2,12 +2,12 @@ import { BarChart, Title } from "@tremor/react";
 import { SpendPerMonth } from "../bindings/SpendPerMonth";
 
 export function SpendOverMonth({
-  spend_per_month,
+  spendPerMonth,
 }: {
-  spend_per_month: SpendPerMonth;
+  spendPerMonth: SpendPerMonth;
 }) {
   const currentYear = new Date().getFullYear();
-  const data = Object.entries(spend_per_month.months).map(([month, year]) => {
+  const data = Object.entries(spendPerMonth.months).map(([month, year]) => {
     const o = {
       date: month,
     } as { [x: number]: number | null };

@@ -13,7 +13,7 @@ import { Account } from "../bindings/Account";
 export function SpendBreakdownTransactions({
   presets,
 }: {
-  spend_per_month: SpendPerMonth;
+  spendPerMonth: SpendPerMonth;
   presets: Preset[];
 }) {
   const [data, setData] = useState(undefined as Account | undefined);
