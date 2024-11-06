@@ -38,7 +38,7 @@ pub async fn handler(
     let account = Account {
         id: account.id.clone(),
         name: account.name.clone(),
-        currency: account.currency.clone(),
+        currency: account.currency,
         format: account.format,
         records: transactions,
         initial_balance: account.initial_balance,

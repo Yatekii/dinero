@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
-use chrono::{DateTime, Datelike, Days, NaiveDate, NaiveTime, Utc};
+use chrono::{Datelike, Days, NaiveDate, NaiveTime, Utc};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
