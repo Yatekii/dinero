@@ -53,7 +53,10 @@ function Dashboard() {
   return (
     <>
       <div className="mt-5 w-full" />
-      <NetWorth totalBalance={data.total_balance} />
+      <NetWorth
+        totalBalance={data.total_balance}
+        totalPrediction={data.total_prediction}
+      />
 
       <div className="mt-5 w-full" />
       <SpendOverMonth spendPerMonth={data.spend_per_month} />

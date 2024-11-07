@@ -69,13 +69,18 @@ export const AvailableChartColors: AvailableChartColorsKeys[] = Object.keys(
   chartColors
 ) as Array<AvailableChartColorsKeys>;
 
+interface Category {
+  name: string;
+  stack?: string;
+}
+
 export const constructCategoryColors = (
-  categories: string[],
+  categories: Category[],
   colors: AvailableChartColorsKeys[]
 ): Map<string, AvailableChartColorsKeys> => {
   const categoryColors = new Map<string, AvailableChartColorsKeys>();
   categories.forEach((category, index) => {
-    categoryColors.set(category, colors[index % colors.length]);
+    categoryColors.set(category.name, colors[index % colors.length]);
   });
   return categoryColors;
 };

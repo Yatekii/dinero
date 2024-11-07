@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use anyhow::bail;
 use axum::{debug_handler, extract::State, Json};
 use chrono::{Datelike, Days, NaiveDate, NaiveTime};
 use itertools::Itertools;
@@ -19,6 +20,12 @@ pub async fn handler(
             total_balance: PortfolioLedgersData {
                 balances: vec![],
                 timestamps: vec![],
+            },
+            total_prediction: PortfolioLedgerData {
+                id: "total-prediction".to_string(),
+                name: "Prediction of the total".to_string(),
+                currency: portfolio.base_currency,
+                series: vec![],
             },
             spend_per_month: SpendPerMonth {
                 months: HashMap::new(),
@@ -56,7 +63,7 @@ pub async fn handler(
                 .sum::<f64>();
 
             let rate = if ledger.currency != portfolio.base_currency {
-                if sum > 0.0 {
+                if sum != 0.0 {
                     *rates
                         .get(date)
                         .or_else(|| rates.get(&date.checked_sub_days(Days::new(1)).unwrap()))
@@ -103,7 +110,7 @@ pub async fn handler(
         });
     }
 
-    const TAKE: usize = 30;
+    const TAKE: usize = 300;
     let xs = std::iter::repeat(())
         .take(TAKE)
         .enumerate()
@@ -116,9 +123,14 @@ pub async fn handler(
         .take(TAKE)
         .rev()
         .collect::<Vec<_>>();
-    let trend_of_total = linear_regression(&xs, &ys);
+    let (m, q) = linear_regression(&xs, &ys)?;
 
-    let trend_of_total = 0.0;
+    let total_prediction = PortfolioLedgerData {
+        id: "total-prediction".to_string(),
+        name: "Prediction of the total".to_string(),
+        currency: portfolio.base_currency,
+        series: (0..365).map(|x| m * ((x + TAKE) as f64) + q).collect(),
+    };
 
     let mut data = HashMap::new();
     for ledger in portfolio.accounts.values().filter(|a| a.spending) {
@@ -159,6 +171,7 @@ pub async fn handler(
                 .map(|v| v.and_time(NaiveTime::default()).and_utc().timestamp())
                 .collect(),
         },
+        total_prediction,
         spend_per_month: SpendPerMonth { months: data },
     }))
 }
@@ -190,6 +203,7 @@ pub struct SpendPerMonth {
 #[ts(export)]
 pub struct PortfolioSummaryResponse {
     pub total_balance: PortfolioLedgersData,
+    pub total_prediction: PortfolioLedgerData,
     pub spend_per_month: SpendPerMonth,
 }
 
@@ -201,4 +215,74 @@ async fn fetch_rate(
     let mut cache = state.cache.lock().await;
     let rate = cache.get(ledger.currency, base_currency).await?;
     Ok(rate.rates.clone())
+}
+
+/// Calculates a linear regression with a known mean.
+///
+/// Lower-level linear regression function. Assumes that `x_mean` and `y_mean`
+/// have already been calculated. Returns `Error::DivByZero` if
+///
+/// * the slope is too steep to represent, approaching infinity.
+///
+/// Since there is a mean, this function assumes that `xs` and `ys` are both non-empty.
+///
+/// Returns `Ok((slope, intercept))` of the regression line.
+pub fn lin_reg<I>(xys: I, x_mean: f64, y_mean: f64) -> anyhow::Result<(f64, f64)>
+where
+    I: Iterator<Item = (f64, f64)>,
+{
+    // SUM (x-mean(x))^2
+    let mut xxm2 = 0.0;
+
+    // SUM (x-mean(x)) (y-mean(y))
+    let mut xmym2 = 0.0;
+
+    for (x, y) in xys {
+        xxm2 += (x - x_mean) * (x - x_mean);
+        xmym2 += (x - x_mean) * (y - y_mean);
+    }
+
+    let slope = xmym2 / xxm2;
+
+    // we check for divide-by-zero after the fact
+    if slope.is_nan() {
+        bail!("The slope is too steep to represent (approaching infinity)");
+    }
+
+    let intercept = y_mean - slope * x_mean;
+
+    Ok((slope, intercept))
+}
+
+/// Two-pass simple linear regression from slices.
+///
+/// Calculates the linear regression from two slices, one for x- and one for y-values, by
+/// calculating the mean and then calling `lin_reg`.
+///
+/// Returns `Ok(slope, intercept)` of the regression line.
+///
+/// # Errors
+///
+/// Returns an error if
+///
+/// * `xs` and `ys` differ in length
+/// * `xs` or `ys` are empty
+/// * the slope is too steep to represent, approaching infinity
+/// * the number of elements cannot be represented as an `F`
+///
+pub fn linear_regression(xs: &[f64], ys: &[f64]) -> anyhow::Result<(f64, f64)> {
+    if xs.len() != ys.len() {
+        bail!("Input vector lengths do not match");
+    }
+
+    if xs.is_empty() {
+        bail!("Input set is empty. Cannot calculate mean");
+    }
+    let x_sum: f64 = xs.iter().cloned().sum();
+    let n = xs.len() as f64;
+    let x_mean = x_sum / n;
+    let y_sum: f64 = ys.iter().cloned().sum();
+    let y_mean = y_sum / n;
+
+    lin_reg(xs.iter().copied().zip(ys.iter().copied()), x_mean, y_mean)
 }

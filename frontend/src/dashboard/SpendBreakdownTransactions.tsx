@@ -28,7 +28,6 @@ export function SpendBreakdownTransactions({
         `http://127.0.0.1:3000/ledger/neon?from=${from}&to=${to}`
       );
       const data = (await response.json()) as Account;
-      console.log(data);
       setData(data);
     };
     load();

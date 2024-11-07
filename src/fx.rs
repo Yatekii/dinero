@@ -60,8 +60,6 @@ impl HistoryCache {
             _ => end,
         };
 
-        dbg!(end);
-
         if self.fx.contains_key(&(from, to)) {
             let rate = self.fx.get(&(from, to)).unwrap();
             let x = rate.rates.last_key_value().map_or(NaiveDate::MIN, |r| *r.0);
@@ -148,19 +146,17 @@ async fn fetch_rates(
     let interval = "1d";
     let client = reqwest::Client::builder().user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36").build()?;
     let response = client
-        .get(dbg!(&format!(
+        .get(&format!(
             "https://query2.finance.yahoo.com/v8/finance/chart/{from}{to}=X?period1={}&period2={}&interval={interval}&events=history&includeAdjustedClose=true",
             start.and_time(NaiveTime::default()).and_utc().timestamp(),
             end.and_time(NaiveTime::default()).and_utc().timestamp(),
-        )))
+        ))
         .send()
         .await?;
     if response.status() != StatusCode::OK {
         panic!("{from}{to}: {}", response.text().await?);
     };
     let rate: Rate = response.json().await?;
-    dbg!(rate.chart.result[0].indicators.quote[0].close.len());
-    dbg!(rate.chart.result[0].timestamp.last());
     if let Some(error) = rate.chart.error {
         anyhow::bail!("{error}");
     }

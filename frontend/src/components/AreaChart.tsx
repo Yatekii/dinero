@@ -378,7 +378,7 @@ type PayloadItem = {
 interface ChartTooltipProps {
   active: boolean | undefined;
   payload: PayloadItem[];
-  label: string;
+  label: Date;
   valueFormatter: (value: number) => string;
 }
 
@@ -409,7 +409,7 @@ const ChartTooltip = ({
               "text-gray-900 dark:text-gray-50"
             )}
           >
-            {label}
+            {label.toDateString()}
           </p>
         </div>
         <div className={cx("space-y-1 px-4 py-2")}>
@@ -463,6 +463,11 @@ interface ActiveDot {
   dataKey?: string;
 }
 
+interface Category {
+  name: string;
+  stack?: string;
+}
+
 type BaseEventProps = {
   eventType: "dot" | "category";
   categoryClicked: string;
@@ -474,9 +479,10 @@ type AreaChartEventProps = BaseEventProps | null | undefined;
 interface AreaChartProps extends React.HTMLAttributes<HTMLDivElement> {
   data: Record<string, any>[];
   index: string;
-  categories: string[];
+  categories: Category[];
   colors?: AvailableChartColorsKeys[];
   valueFormatter?: (value: number) => string;
+  tickFormatter?: (value: any) => string;
   startEndOnly?: boolean;
   showXAxis?: boolean;
   showYAxis?: boolean;
@@ -510,6 +516,7 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
       index,
       colors = AvailableChartColors,
       valueFormatter = (value: number) => value.toString(),
+      tickFormatter = (value: any) => value.toString(),
       startEndOnly = false,
       showXAxis = true,
       showYAxis = true,
@@ -698,6 +705,7 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
               tickLine={false}
               axisLine={false}
               minTickGap={tickGap}
+              tickFormatter={tickFormatter}
             >
               {xAxisLabel && (
                 <Label
@@ -814,19 +822,19 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
               />
             ) : null}
             {categories.map((category) => {
-              const categoryId = `${areaId}-${category.replace(
+              const categoryId = `${areaId}-${category.name.replace(
                 /[^a-zA-Z0-9]/g,
                 ""
               )}`;
               return (
-                <React.Fragment key={category}>
-                  <defs key={category}>
+                <React.Fragment key={category.name}>
+                  <defs key={category.name}>
                     <linearGradient
-                      key={category}
+                      key={category.name}
                       className={cx(
                         getColorClassName(
                           categoryColors.get(
-                            category
+                            category.name
                           ) as AvailableChartColorsKeys,
                           "text"
                         )
@@ -841,7 +849,7 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
                         fillType: fill,
                         activeDot: activeDot,
                         activeLegend: activeLegend,
-                        category: category,
+                        category: category.name,
                       })}
                     </linearGradient>
                   </defs>
@@ -849,13 +857,14 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
                     className={cx(
                       getColorClassName(
                         categoryColors.get(
-                          category
+                          category.name
                         ) as AvailableChartColorsKeys,
                         "stroke"
                       )
                     )}
                     strokeOpacity={
-                      activeDot || (activeLegend && activeLegend !== category)
+                      activeDot ||
+                      (activeLegend && activeLegend !== category.name)
                         ? 0.3
                         : 1
                     }
@@ -906,13 +915,13 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
                       } = props;
 
                       if (
-                        (hasOnlyOneValueForKey(data, category) &&
+                        (hasOnlyOneValueForKey(data, category.name) &&
                           !(
                             activeDot ||
-                            (activeLegend && activeLegend !== category)
+                            (activeLegend && activeLegend !== category.name)
                           )) ||
                         (activeDot?.index === index &&
-                          activeDot?.dataKey === category)
+                          activeDot?.dataKey === category.name)
                       ) {
                         return (
                           <Dot
@@ -940,17 +949,21 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
                       }
                       return <React.Fragment key={index}></React.Fragment>;
                     }}
-                    key={category}
-                    name={category}
+                    key={category.name}
+                    name={category.name}
                     type="linear"
-                    dataKey={category}
+                    dataKey={category.name}
                     stroke=""
                     strokeWidth={2}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                     isAnimationActive={false}
                     connectNulls={connectNulls}
-                    stackId={stacked ? "stack" : undefined}
+                    stackId={
+                      stacked
+                        ? "stack-" + (category.stack ?? "default")
+                        : undefined
+                    }
                     fill={`url(#${categoryId})`}
                   />
                 </React.Fragment>
@@ -962,10 +975,10 @@ const AreaChart = React.forwardRef<HTMLDivElement, AreaChartProps>(
                   <Line
                     className={cx("cursor-pointer")}
                     strokeOpacity={0}
-                    key={category}
-                    name={category}
+                    key={category.name}
+                    name={category.name}
                     type="linear"
-                    dataKey={category}
+                    dataKey={category.name}
                     stroke="transparent"
                     fill="transparent"
                     legendType="none"
