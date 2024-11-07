@@ -43,6 +43,13 @@ pub async fn handler(
         min_date = min_date.min(min);
     }
 
+    // Take 3 years worth of data.
+    const NUM_SAMPLES: u64 = 3 * 365;
+
+    if min_date.checked_add_days(Days::new(NUM_SAMPLES)) < Some(max_date) {
+        min_date = max_date.checked_sub_days(Days::new(NUM_SAMPLES)).unwrap();
+    }
+
     let dates = (min_date.iter_days().take_while(|d| d <= &max_date)).collect::<Vec<_>>();
 
     let mut ledgers = HashMap::new();
