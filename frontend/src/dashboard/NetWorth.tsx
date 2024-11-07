@@ -49,7 +49,14 @@ export default function NetWorth({
     <>
       <div className="flex justify-between">
         <Title>Net worth over time (CHF)</Title>
-        <Title>Net worth over time (CHF)</Title>
+        <Title>
+          Current:{" "}
+          {totalBalance.balances
+            .map((b) => b.series[b.series.length - 1])
+            .reduce((t, v) => t + v)
+            .toFixed(0)}{" "}
+          CHF
+        </Title>
       </div>
       <AreaChart
         className="h-72 mt-4"
