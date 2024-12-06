@@ -1,7 +1,8 @@
-import { Button, Card, Tab, TabGroup, TabList } from "@tremor/react";
+import { Button, Tab, TabGroup, TabList } from "@tremor/react";
 import {
   Outlet,
   useLoaderData,
+  useLocation,
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -17,15 +18,19 @@ export async function ledgersLoader() {
 }
 
 export function LedgerLayout() {
+  const params = useParams();
   return (
-    <Card className="mx-full">
-      <LedgerMenu />
-      <Outlet />
-    </Card>
+    <div className="mx-full flex flex-row overflow-scroll h-screen">
+      <LedgerSelector />
+      <div className="w-full">
+        {params.ledgerId && <LedgerMenu />}
+        <Outlet />
+      </div>
+    </div>
   );
 }
 
-function LedgerMenu() {
+function LedgerSelector() {
   const { ledgers } = useLoaderData() as Awaited<
     ReturnType<typeof ledgersLoader>
   >;
@@ -33,38 +38,84 @@ function LedgerMenu() {
   const params = useParams();
 
   return (
-    <div className="flex items-center mb-3">
-      <TabGroup
-        index={
-          params.ledgerId
-            ? ledgers.findIndex((l) => l.id == params.ledgerId) + 1
-            : 0
-        }
-        onIndexChange={(index) =>
-          index == 0
-            ? navigate(`/ledger`)
-            : navigate(`/ledger/${ledgers[index - 1].id}`)
-        }
-      >
-        <TabList variant="solid" className="flex flex-wrap p-2">
-          <>
-            <Tab icon={CakeIcon}>"All"</Tab>
-            {ledgers.map((l) => (
-              <Tab key={l.name + l.currency} icon={CakeIcon}>
-                {l.name} [{l.currency}]
-              </Tab>
-            ))}
-          </>
-        </TabList>
-      </TabGroup>
-      <Button
-        variant="primary"
-        onClick={() => navigate(`/ledger/add`)}
-        size="sm"
-        className="ml-2 py-1 px-3"
-      >
-        Add
-      </Button>
-    </div>
+    <>
+      <div className="flex flex-col mb-5">
+        <Button
+          variant="primary"
+          onClick={() => navigate(`/ledger/add`)}
+          className="py-1 px-3 mb-5"
+        >
+          Add
+        </Button>
+        <TabGroup
+          index={
+            params.ledgerId
+              ? ledgers.findIndex((l) => l.id == params.ledgerId) + 1
+              : 0
+          }
+          onIndexChange={(index) =>
+            index == 0
+              ? navigate(`/ledger`)
+              : navigate(`/ledger/${ledgers[index - 1].id}`)
+          }
+        >
+          <TabList variant="solid" className="flex flex-wrap p-2 flex-col">
+            <>
+              <Tab icon={CakeIcon}>"All"</Tab>
+              {ledgers.map((l) => (
+                <Tab key={l.name + l.currency} icon={CakeIcon}>
+                  {l.name} [{l.currency}]
+                </Tab>
+              ))}
+            </>
+          </TabList>
+        </TabGroup>
+      </div>
+      <div className="w-5 h-full" />
+    </>
   );
 }
+
+function LedgerMenu() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
+
+  const reverse = reverseItems();
+  const index =
+    reverse.length -
+    1 -
+    reverse.findIndex((item) => location.pathname.endsWith(item.url));
+  const menuItems = items();
+  return (
+    <>
+      {!location.pathname.endsWith("/add") ? (
+        <TabGroup
+          index={index}
+          onIndexChange={(index) =>
+            navigate(`/ledger/${params.ledgerId}${menuItems[index].url}`)
+          }
+          className="mb-3 mt-0"
+        >
+          <TabList className="">
+            {menuItems.map((item, index) => (
+              <Tab tabIndex={index} key={index}>
+                {item.name}
+              </Tab>
+            ))}
+          </TabList>
+        </TabGroup>
+      ) : (
+        <></>
+      )}
+    </>
+  );
+}
+
+const items = () => [
+  { name: "Transactions", url: "/" },
+  { name: "Files", url: "/files" },
+  { name: "Meta", url: "/meta" },
+];
+
+const reverseItems = () => items().reverse();

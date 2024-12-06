@@ -31,18 +31,19 @@ pub struct Stock {
     pub cost_basis: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct SerdeAccount {
     pub id: String,
     pub name: String,
     pub currency: Currency,
     pub format: BankFormat,
     pub initial_balance: Option<f64>,
+    #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,
     pub spending: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Account {
     pub id: String,

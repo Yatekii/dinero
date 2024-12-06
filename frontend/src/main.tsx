@@ -10,12 +10,14 @@ import {
 } from "react-router-dom";
 import Dashboard, { dataLoader } from "./dashboard/Dashboard.tsx";
 import { Ledger, ledgerLoader } from "./ledger/LedgerView.tsx";
+import { LedgerFileView, ledgerFileLoader } from "./ledger/LedgerFileView.tsx";
 import { LedgerLayout, ledgersLoader } from "./ledger/LedgerLayout.tsx";
 import { LedgerCreate } from "./ledger/LedgerCreate.tsx";
 import {
   LedgerOverview,
   ledgerOverviewLoader,
 } from "./ledger/LedgerOverview.tsx";
+import { ledgerMetaLoader, LedgerMetaView } from "./ledger/LedgerMeta.tsx";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -28,11 +30,23 @@ const router = createBrowserRouter(
           loader={ledgerOverviewLoader}
         />
         <Route path={"/ledger/add"} element={<LedgerCreate />} />
-        <Route
-          path={"/ledger/:ledgerId"}
-          loader={ledgerLoader}
-          element={<Ledger />}
-        />
+        <Route path={"/ledger/:ledgerId"}>
+          <Route
+            path={"/ledger/:ledgerId/"}
+            loader={ledgerLoader}
+            element={<Ledger />}
+          />
+          <Route
+            path={"/ledger/:ledgerId/files"}
+            loader={ledgerFileLoader}
+            element={<LedgerFileView />}
+          />
+          <Route
+            path={"/ledger/:ledgerId/meta"}
+            loader={ledgerMetaLoader}
+            element={<LedgerMetaView />}
+          />
+        </Route>
       </Route>
     </Route>
   )

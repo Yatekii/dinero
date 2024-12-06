@@ -9,7 +9,7 @@ use super::{LedgerRecord, ParsedAccount, Parser};
 pub struct Ibkr {}
 
 impl Parser for Ibkr {
-    fn parse(name: String, content: String) -> anyhow::Result<ParsedAccount> {
+    fn parse(name: &str, content: String) -> anyhow::Result<ParsedAccount> {
         let mut ledgers = vec![];
         let lines = content.lines().collect::<Vec<_>>();
         let mut end = lines.len();
@@ -32,7 +32,7 @@ impl Parser for Ibkr {
                 };
 
                 ledgers.push(super::ParsedLedger {
-                    name: name.clone(),
+                    name: name.to_string(),
                     records,
                 });
 
@@ -128,9 +128,7 @@ mod tests {
 
     #[test]
     fn parse() {
-        insta::assert_debug_snapshot!(
-            super::Ibkr::parse("IBKR".to_string(), TRANSACTIONS.into()).unwrap()
-        );
+        insta::assert_debug_snapshot!(super::Ibkr::parse("IBKR", TRANSACTIONS.into()).unwrap());
     }
 
     #[test]
@@ -138,10 +136,6 @@ mod tests {
         expected = "The data seems to not be in IBKR format as no HEADER lines were found"
     )]
     fn parse_fail() {
-        insta::assert_debug_snapshot!(super::Ibkr::parse(
-            "IBKR".to_string(),
-            TRANSACTIONS_BAD.into()
-        )
-        .unwrap());
+        insta::assert_debug_snapshot!(super::Ibkr::parse("IBKR", TRANSACTIONS_BAD.into()).unwrap());
     }
 }

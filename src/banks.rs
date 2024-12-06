@@ -11,7 +11,7 @@ use ts_rs::TS;
 
 use crate::cli::BankFormat;
 
-pub fn parse(name: String, content: String, format: BankFormat) -> Result<Vec<LedgerRecord>> {
+pub fn parse(name: &str, content: String, format: BankFormat) -> Result<Vec<LedgerRecord>> {
     Ok(match format {
         BankFormat::Neon => neon::Neon::parse(name, content),
         BankFormat::Ubs => ubs::Ubs::parse(name, content),
@@ -24,7 +24,7 @@ pub fn parse(name: String, content: String, format: BankFormat) -> Result<Vec<Le
 }
 
 pub fn load(
-    name: String,
+    name: &str,
     path: impl AsRef<Path>,
     format: BankFormat,
 ) -> anyhow::Result<Vec<LedgerRecord>> {
@@ -36,36 +36,20 @@ pub fn load(
     }
 }
 
-fn load_inner<T: Parser>(
-    name: String,
-    path: impl AsRef<Path>,
-) -> anyhow::Result<Vec<LedgerRecord>> {
-    let mut records = vec![];
-    for dir_entry in std::fs::read_dir(&path).with_context(|| {
-        format!(
-            "could not read ledger directory {}",
-            path.as_ref().display()
-        )
-    })? {
-        let dir_entry = dir_entry?;
-
-        let path = dir_entry.path();
-        let loaded = T::parse(
-            name.clone(),
-            std::fs::read_to_string(&path)
-                .with_context(|| format!("could not read ledger CSV {}", path.display()))?,
-        )?
-        .ledgers[0]
-            .records
-            .clone();
-
-        records.extend(loaded);
-    }
-    Ok(records)
+fn load_inner<T: Parser>(name: &str, path: impl AsRef<Path>) -> anyhow::Result<Vec<LedgerRecord>> {
+    let loaded = T::parse(
+        name,
+        std::fs::read_to_string(&path)
+            .with_context(|| format!("could not read ledger CSV {}", path.as_ref().display()))?,
+    )?
+    .ledgers[0]
+        .records
+        .clone();
+    Ok(loaded)
 }
 
 pub trait Parser {
-    fn parse(name: String, content: String) -> Result<ParsedAccount>;
+    fn parse(name: &str, content: String) -> Result<ParsedAccount>;
 }
 
 #[derive(Debug)]
@@ -89,6 +73,7 @@ pub struct LedgerRecord {
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize, TS)]
+#[ts(export)]
 pub struct ExtendedLedgerRecord {
     #[ts(type = "number")]
     pub date: NaiveDate,

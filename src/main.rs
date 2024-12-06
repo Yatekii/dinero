@@ -10,8 +10,8 @@ mod state;
 
 use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use axum::http::Method;
-use axum::routing::post;
-use axum::{routing::get, Router};
+use axum::routing::{get, post, put};
+use axum::Router;
 use clap::Parser;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
@@ -35,11 +35,38 @@ async fn serve() -> anyhow::Result<()> {
             .route("/data", get(handler::portfolio::get::handler))
             .route("/ledgers", get(handler::ledger::list::handler))
             .route("/ledgers/summary", get(handler::ledger::summary::handler))
-            .route(
+            .nest(
                 "/ledger/:id",
-                get(handler::ledger::get::handler), // .post(handler::ledger::update::handler),
+                Router::<AppState>::new()
+                    .route(
+                        "/",
+                        get(handler::ledger::get::handler)
+                            .post(handler::ledger::create::handler)
+                            .put(handler::ledger::update::handler)
+                            .delete(handler::ledger::delete::handler),
+                    )
+                    .nest(
+                        "/files",
+                        Router::<AppState>::new()
+                            .route(
+                                "/",
+                                get(handler::ledger::files::get::handler)
+                                    .post(handler::ledger::files::post::handler),
+                            )
+                            .nest(
+                                "/:fileName",
+                                Router::<AppState>::new().route(
+                                    "/",
+                                    put(handler::ledger::files::put::handler)
+                                        .delete(handler::ledger::files::delete::handler),
+                                ),
+                            ),
+                    ),
             )
-            // .route("/ledger", post(handler::ledger::create::handler))
+            .route(
+                "/ledger",
+                post(handler::ledger::create::handler).put(handler::ledger::update::handler),
+            )
             .with_state(AppState::new()?)
             .layer(
                 CorsLayer::new()
@@ -50,7 +77,13 @@ async fn serve() -> anyhow::Result<()> {
                             false
                         }
                     }))
-                    .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+                    .allow_methods([
+                        Method::GET,
+                        Method::POST,
+                        Method::PUT,
+                        Method::DELETE,
+                        Method::OPTIONS,
+                    ])
                     .allow_headers(vec![AUTHORIZATION, ACCEPT, CONTENT_TYPE])
                     .max_age(std::time::Duration::from_secs(3600)),
             ),

@@ -64,6 +64,7 @@ pub struct LedgerSummary {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct SpendingSummary {
     categories: HashMap<String, f64>,
 }

@@ -10,11 +10,14 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum Currency {
     CHF,
     USD,
     EUR,
     JPY,
+    GBP,
+    PLN,
 }
 
 impl Display for Currency {
@@ -24,6 +27,8 @@ impl Display for Currency {
             Currency::USD => f.write_str("USD"),
             Currency::EUR => f.write_str("EUR"),
             Currency::JPY => f.write_str("JPY"),
+            Currency::GBP => f.write_str("GBP"),
+            Currency::PLN => f.write_str("PLN"),
         }
     }
 }

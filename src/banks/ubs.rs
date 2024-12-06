@@ -8,7 +8,7 @@ use super::{LedgerRecord, ParsedAccount, ParsedLedger, Parser};
 pub struct Ubs {}
 
 impl Parser for Ubs {
-    fn parse(name: String, content: String) -> anyhow::Result<ParsedAccount> {
+    fn parse(name: &str, content: String) -> anyhow::Result<ParsedAccount> {
         let records = ReaderBuilder::new()
             .delimiter(b';')
             .from_reader(Cursor::new(&content))
@@ -34,7 +34,10 @@ impl Parser for Ubs {
             .collect::<Result<_, _>>()?;
 
         Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger { name, records }],
+            ledgers: vec![ParsedLedger {
+                name: name.to_string(),
+                records,
+            }],
         })
     }
 }
@@ -89,8 +92,6 @@ mod tests {
 
     #[test]
     fn parse() {
-        insta::assert_debug_snapshot!(
-            super::Ubs::parse("UBS".to_string(), TRANSACTIONS.into()).unwrap()
-        );
+        insta::assert_debug_snapshot!(super::Ubs::parse("UBS", TRANSACTIONS.into()).unwrap());
     }
 }

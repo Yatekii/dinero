@@ -1,5 +1,4 @@
 import {
-  Card,
   DateRangePicker,
   DateRangePickerValue,
   DonutChart,
@@ -64,26 +63,24 @@ export function LedgerOverview() {
 
   return (
     <>
-      <Card>
-        <div className="space-x-3 max-w-md flex mb-3">
-          <div>
-            <p className="font-mono text-sm text-slate-500">from </p>
-            <DateRangePicker
-              value={date}
-              onValueChange={selectDate}
-              enableSelect={false}
-            />
-          </div>
+      <div className="space-x-3 max-w-md flex mb-3">
+        <div>
+          <p className="font-mono text-sm text-slate-500">from </p>
+          <DateRangePicker
+            value={date}
+            onValueChange={selectDate}
+            enableSelect={false}
+          />
         </div>
+      </div>
 
-        <Title>Ledger Overview</Title>
-        <DonutChart
-          data={expenses}
-          variant="pie"
-          valueFormatter={dataFormatter}
-          onValueChange={(v) => console.log(v)}
-        />
-      </Card>
+      <Title>Ledger Overview</Title>
+      <DonutChart
+        data={expenses}
+        variant="pie"
+        valueFormatter={dataFormatter}
+        onValueChange={(v) => console.log(v)}
+      />
     </>
   );
 }

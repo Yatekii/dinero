@@ -12,7 +12,7 @@ use super::{LedgerRecord, ParsedAccount, ParsedLedger, Parser};
 pub struct Revolut {}
 
 impl Parser for Revolut {
-    fn parse(name: String, content: String) -> anyhow::Result<ParsedAccount> {
+    fn parse(name: &str, content: String) -> anyhow::Result<ParsedAccount> {
         let records = ReaderBuilder::new()
             .delimiter(b',')
             .from_reader(Cursor::new(&content))
@@ -33,7 +33,10 @@ impl Parser for Revolut {
             .collect::<Result<_, _>>()?;
 
         Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger { name, records }],
+            ledgers: vec![ParsedLedger {
+                name: name.to_string(),
+                records,
+            }],
         })
     }
 }
@@ -160,8 +163,6 @@ CARD_PAYMENT,Current,2023-09-11 23:01:47,2023-09-12 13:55:10,Gst,-7.45,0.00,CHF,
 CARD_PAYMENT,Current,2023-09-12 00:57:32,2023-09-12 21:52:25,Confiteria Antojos,-4.94,0.00,CHF,COMPLETED,4.12
 CARD_PAYMENT,Current,2023-10-23 17:56:02,2023-10-24 13:33:24,Coop,-1.45,0.00,CHF,COMPLETED,2.67
 "#;
-        insta::assert_debug_snapshot!(
-            Revolut::parse("Neon".to_string(), TRANSACTIONS.to_string()).unwrap()
-        );
+        insta::assert_debug_snapshot!(Revolut::parse("Neon", TRANSACTIONS.to_string()).unwrap());
     }
 }

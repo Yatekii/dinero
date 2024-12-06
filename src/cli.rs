@@ -20,7 +20,7 @@ pub enum Command {
 pub struct Serve {}
 
 #[derive(ValueEnum, Clone, Debug, Serialize, Deserialize, TS, Copy)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 #[ts(export)]
 pub enum BankFormat {
     Ubs,

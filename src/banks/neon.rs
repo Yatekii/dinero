@@ -8,7 +8,7 @@ use super::{LedgerRecord, ParsedAccount, ParsedLedger, Parser};
 pub struct Neon {}
 
 impl Parser for Neon {
-    fn parse(name: String, content: String) -> anyhow::Result<ParsedAccount> {
+    fn parse(name: &str, content: String) -> anyhow::Result<ParsedAccount> {
         let records = ReaderBuilder::new()
             .delimiter(b';')
             .from_reader(Cursor::new(&content))
@@ -26,7 +26,10 @@ impl Parser for Neon {
             .collect::<Result<_, _>>()?;
 
         Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger { name, records }],
+            ledgers: vec![ParsedLedger {
+                name: name.to_string(),
+                records,
+            }],
         })
     }
 }
@@ -76,8 +79,6 @@ pub mod tests {
 "2019-05-10";"30.00";"";"";"";"neon Switzerland AG";;"income";"";"no";"no"
 "2019-05-09";"3000.00";"";"";"";"Technokrat GmbH";"Lohn";"income_salary";"income";"no";"no"
 "#;
-        insta::assert_debug_snapshot!(
-            Neon::parse("Neon".to_string(), TRANSACTIONS.to_string()).unwrap()
-        );
+        insta::assert_debug_snapshot!(Neon::parse("Neon", TRANSACTIONS.to_string()).unwrap());
     }
 }

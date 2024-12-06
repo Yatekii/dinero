@@ -3,3 +3,4 @@ data
 /portfolio
 portfolio-save
 .env
+.DS_Store
