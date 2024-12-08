@@ -7,10 +7,11 @@ import { SpendBreakdown } from "./SpendBreakdown";
 import { useState } from "react";
 import { Tab, TabGroup, TabList, Title } from "@tremor/react";
 import { SpendBreakdownTransactions } from "./SpendBreakdownTransactions";
+import { API_URL } from "../main";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function dataLoader() {
-  const response = await fetch("http://127.0.0.1:3000/data");
+  const response = await fetch(`${API_URL}/data`);
   const data = (await response.json()) as PortfolioSummaryResponse;
 
   return data;

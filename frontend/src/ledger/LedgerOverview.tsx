@@ -6,6 +6,7 @@ import {
 } from "@tremor/react";
 import { useLoaderData, useSearchParams } from "react-router-dom";
 import { LedgerSummary } from "../bindings/LedgerSummary";
+import { API_URL } from "../main";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgerOverviewLoader({
@@ -15,7 +16,7 @@ export async function ledgerOverviewLoader({
 }) {
   const searchParams = new URL(request.url).searchParams;
   const response = await fetch(
-    `http://127.0.0.1:3000/ledgers/summary?${searchParams.toString()}`
+    `${API_URL}/ledgers/summary?${searchParams.toString()}`
   );
   const ledgers = (await response.json()) as LedgerSummary;
 

@@ -1,5 +1,12 @@
 import { Card, Tab, TabGroup, TabList } from "@tremor/react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  Outlet,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import { useCookies } from "react-cookie";
+import { API_URL } from "./main";
 
 const items = () => [
   { name: "Overview", url: "/" },
@@ -9,15 +16,38 @@ const items = () => [
 const reverseItems = () => items().reverse();
 
 export function Layout() {
+  const [cookies, setCookie] = useCookies(["USERID", "USERNAME"]);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  if (searchParams.get("userid") && searchParams.get("username")) {
+    setCookie("USERID", searchParams.get("userid"));
+    setCookie("USERNAME", searchParams.get("username"));
+    setSearchParams((prev) => {
+      prev.delete("userid");
+      prev.delete("username");
+      return prev;
+    });
+  }
+
+  if (!cookies.USERID) {
+    document.location.replace(`${API_URL}/auth/oidc`);
+  }
+
   return (
-    <Card className="mx-full h-fit">
-      <MainMenu />
-      <Outlet />
+    <Card className="w-screen h-screen flex justify-center items-center">
+      {cookies.USERID ? (
+        <div className="w-screen h-screen overflow-scroll">
+          <MainMenu username={cookies.USERNAME} />
+          <Outlet />
+        </div>
+      ) : (
+        <h1 className="text-white text-4xl">Logging in ...</h1>
+      )}
     </Card>
   );
 }
 
-function MainMenu() {
+function MainMenu({ username }: { username: string }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -32,7 +62,7 @@ function MainMenu() {
       <TabGroup
         index={index}
         onIndexChange={(index) => navigate(menuItems[index].url)}
-        className="mb-3"
+        className="mb-3 flex justify-between"
       >
         <TabList className="mt-4">
           {menuItems.map((item, index) => (
@@ -41,6 +71,22 @@ function MainMenu() {
             </Tab>
           ))}
         </TabList>
+
+        <div className="flex">
+          <Tab className="self-end hover:border-none hover:text-gray-600">
+            [{username}]
+          </Tab>
+          <button
+            onClick={async () => {
+              await fetch(`${API_URL}/logout`, {
+                credentials: "include",
+              });
+            }}
+            className="p-1 py-1 text-gray-600 mt-5 hover:underline"
+          >
+            logout
+          </button>
+        </div>
       </TabGroup>
     </>
   );

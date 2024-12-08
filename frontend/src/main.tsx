@@ -19,6 +19,10 @@ import {
 } from "./ledger/LedgerOverview.tsx";
 import { ledgerMetaLoader, LedgerMetaView } from "./ledger/LedgerMeta.tsx";
 
+export const API_URL = import.meta.env.PROD
+  ? `/api`
+  : `http://127.0.0.1:3000/api`;
+
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path={"/"} element={<Layout />}>

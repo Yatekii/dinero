@@ -23,6 +23,9 @@ float-cmp = "0.9"
 ts-rs = { version = "8.1", features = ["serde-compat"] }
 itertools = "0.12.1"
 chrono = { version = "0.4.37", features = ["serde"] }
+oauth2 = "4"
+async-session = "3"
+axum-extra = { version = "0.9", features = ["typed-header"] }
 
 [dev-dependencies]
 insta = { version = "*" }

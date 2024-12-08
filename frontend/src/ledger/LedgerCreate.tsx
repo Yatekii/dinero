@@ -5,6 +5,7 @@ import { Checkbox } from "../components/Checkbox";
 import { useNavigate } from "react-router-dom";
 import { CreateLedgerResponse } from "../bindings/CreateLedgerResponse";
 import { BANKS, CURRENCIES } from "../lib/currency";
+import { API_URL } from "../main";
 
 export function LedgerCreate() {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ export function LedgerCreate() {
         size="sm"
         className="mt-5"
         onClick={async () => {
-          const response = await fetch(`http://127.0.0.1:3000/ledger`, {
+          const response = await fetch(`${API_URL}/ledger`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -85,7 +86,7 @@ export function LedgerCreate() {
           });
           if (response.status == 200) {
             const data = (await response.json()) as CreateLedgerResponse;
-            navigate(`http://127.0.0.1:3000/ledger/${data.id}`);
+            navigate(`/ledger/${data.id}`);
           }
         }}
       >

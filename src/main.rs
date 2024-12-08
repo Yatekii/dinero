@@ -13,6 +13,7 @@ use axum::http::Method;
 use axum::routing::{get, post, put};
 use axum::Router;
 use clap::Parser;
+use reqwest::header::ACCESS_CONTROL_ALLOW_CREDENTIALS;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::state::AppState;
@@ -30,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
 async fn serve() -> anyhow::Result<()> {
     // build our application with a route
     let app = Router::new().route("/", get(handler::index::handler)).nest(
-        "/",
+        "/api",
         Router::<AppState>::new()
             .route("/data", get(handler::portfolio::get::handler))
             .route("/ledgers", get(handler::ledger::list::handler))
@@ -67,6 +68,12 @@ async fn serve() -> anyhow::Result<()> {
                 "/ledger",
                 post(handler::ledger::create::handler).put(handler::ledger::update::handler),
             )
+            .route("/auth/oidc", get(handler::auth::oidc::oidc_auth))
+            .route(
+                "/auth/authorized",
+                get(handler::auth::login::login_authorized),
+            )
+            .route("/logout", get(handler::auth::logout::logout))
             .with_state(AppState::new()?)
             .layer(
                 CorsLayer::new()
@@ -84,7 +91,12 @@ async fn serve() -> anyhow::Result<()> {
                         Method::DELETE,
                         Method::OPTIONS,
                     ])
-                    .allow_headers(vec![AUTHORIZATION, ACCEPT, CONTENT_TYPE])
+                    .allow_headers(vec![
+                        AUTHORIZATION,
+                        ACCEPT,
+                        CONTENT_TYPE,
+                        ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                    ])
                     .max_age(std::time::Duration::from_secs(3600)),
             ),
     );

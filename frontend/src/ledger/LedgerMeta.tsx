@@ -6,6 +6,7 @@ import { useLoaderData, useNavigate } from "react-router-dom";
 import { CreateLedgerResponse } from "../bindings/CreateLedgerResponse";
 import { Account } from "../bindings/Account";
 import { BANKS, CURRENCIES } from "../lib/currency";
+import { API_URL } from "../main";
 
 export type Params<Key extends string = string> = {
   readonly [key in Key]: string | undefined;
@@ -15,9 +16,7 @@ export type Params<Key extends string = string> = {
 export async function ledgerMetaLoader({ params }: { params: Params }) {
   let currentLedger;
   if (params.ledgerId != undefined) {
-    const response = await fetch(
-      `http://127.0.0.1:3000/ledger/${params.ledgerId}`
-    );
+    const response = await fetch(`${API_URL}/ledger/${params.ledgerId}`);
     currentLedger = (await response.json()) as Account;
   }
 
@@ -103,7 +102,7 @@ export function LedgerMetaView() {
         className="mt-5"
         onClick={async () => {
           const response = await fetch(
-            `http://127.0.0.1:3000/ledger/${currentLedger.id}`,
+            `${API_URL}/ledger/${currentLedger.id}`,
             {
               method: "PUT",
               headers: {
@@ -135,7 +134,7 @@ export function LedgerMetaView() {
             `Are you sure you want to delete ledger ${currentLedger.id}`
           );
           const response = await fetch(
-            `http://127.0.0.1:3000/ledger/${currentLedger.id}`,
+            `${API_URL}/ledger/${currentLedger.id}`,
             {
               method: "DELETE",
             }

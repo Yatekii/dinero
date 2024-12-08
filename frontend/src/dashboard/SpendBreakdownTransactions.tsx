@@ -9,6 +9,7 @@ import {
 import { SpendPerMonth } from "../bindings/SpendPerMonth";
 import { useEffect, useState } from "react";
 import { Account } from "../bindings/Account";
+import { API_URL } from "../main";
 
 export function SpendBreakdownTransactions({
   presets,
@@ -25,7 +26,7 @@ export function SpendBreakdownTransactions({
       const from = `${year}-${month}-01`;
       const to = `${year}-${month}-${daysInMonth(month, year)}`;
       const response = await fetch(
-        `http://127.0.0.1:3000/ledger/neon?from=${from}&to=${to}`
+        `${API_URL}/ledger/neon?from=${from}&to=${to}`
       );
       const data = (await response.json()) as Account;
       setData(data);

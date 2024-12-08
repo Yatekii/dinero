@@ -9,6 +9,7 @@ import {
 import { Navigate, useLoaderData } from "react-router-dom";
 import type { ListLedgerResponse } from "../bindings/ListLedgerResponse";
 import { Account } from "../bindings/Account";
+import { API_URL } from "../main";
 
 export type Params<Key extends string = string> = {
   readonly [key in Key]: string | undefined;
@@ -16,11 +17,11 @@ export type Params<Key extends string = string> = {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgerLoader({ params }: { params: Params }) {
-  let response = await fetch("http://127.0.0.1:3000/ledgers");
+  let response = await fetch(`${API_URL}/ledgers`);
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
   let data = undefined;
   if (params.ledgerId != undefined) {
-    response = await fetch(`http://127.0.0.1:3000/ledger/${params.ledgerId}`);
+    response = await fetch(`${API_URL}/ledger/${params.ledgerId}`);
     data = (await response.json()) as Account;
   }
 

@@ -24,6 +24,7 @@ import type { ListLedgerResponse } from "../bindings/ListLedgerResponse";
 import { LedgerFiles } from "../bindings/LedgerFiles";
 import { Tooltip } from "../components/Tooltip";
 import Dropzone, { useDropzone } from "react-dropzone";
+import { API_URL } from "../main";
 
 export type Params<Key extends string = string> = {
   readonly [key in Key]: string | undefined;
@@ -31,13 +32,11 @@ export type Params<Key extends string = string> = {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgerFileLoader({ params }: { params: Params }) {
-  let response = await fetch("http://127.0.0.1:3000/ledgers");
+  let response = await fetch(`${API_URL}/ledgers`);
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
   let data = undefined;
   if (params.ledgerId != undefined) {
-    response = await fetch(
-      `http://127.0.0.1:3000/ledger/${params.ledgerId}/files`
-    );
+    response = await fetch(`${API_URL}/ledger/${params.ledgerId}/files`);
     data = (await response.json()) as LedgerFiles;
   }
 
@@ -55,7 +54,7 @@ export function LedgerFileView() {
     const body = new FormData();
     body.append("file", file);
 
-    await fetch(`http://127.0.0.1:3000/ledger/${id}/files/${name}`, {
+    await fetch(`${API_URL}/ledger/${id}/files/${name}`, {
       method: "PUT",
       body,
     });
@@ -66,7 +65,7 @@ export function LedgerFileView() {
     const body = new FormData();
     body.append(`${files[0].name}`, files[0]);
 
-    await fetch(`http://127.0.0.1:3000/ledger/${id}/files`, {
+    await fetch(`${API_URL}/ledger/${id}/files`, {
       method: "POST",
       body,
     });
@@ -76,7 +75,7 @@ export function LedgerFileView() {
 
   const deleteFile = async (id: string, name: string) => {
     await alert(`Are you sure you want to delete the file ${name}?`);
-    await fetch(`http://127.0.0.1:3000/ledger/${id}/files/${name}`, {
+    await fetch(`${API_URL}/api/ledger/${id}/files/${name}`, {
       method: "DELETE",
     });
 
@@ -222,18 +221,15 @@ function Import({ ledgerId }: { ledgerId: string }) {
         className="mt-5"
         onClick={async () => {
           setError("");
-          const response = await fetch(
-            `http://127.0.0.1:3000/ledger/${ledgerId}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                transactions_data: content,
-              }),
-            }
-          );
+          const response = await fetch(`${API_URL}/ledger/${ledgerId}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              transactions_data: content,
+            }),
+          });
 
           if (response.ok) {
             setSuccess("Values added!");
