@@ -35,7 +35,7 @@ pub struct AuthRedirect;
 
 impl IntoResponse for AuthRedirect {
     fn into_response(self) -> Response {
-        Redirect::temporary("/api/auth/oidc").into_response()
+        Redirect::temporary("/auth/oidc").into_response()
     }
 }
 

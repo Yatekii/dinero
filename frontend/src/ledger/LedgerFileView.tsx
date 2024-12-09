@@ -85,7 +85,7 @@ export function LedgerFileView() {
 
   const deleteFile = async (id: string, name: string) => {
     await alert(`Are you sure you want to delete the file ${name}?`);
-    await fetch(`${API_URL}/api/ledger/${id}/files/${name}`, {
+    await fetch(`${API_URL}/ledger/${id}/files/${name}`, {
       method: "DELETE",
       credentials: "include",
       redirect: "follow",
