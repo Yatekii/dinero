@@ -30,77 +30,74 @@ async fn main() -> anyhow::Result<()> {
 
 async fn serve() -> anyhow::Result<()> {
     // build our application with a route
-    let app = Router::new().route("/", get(handler::index::handler)).nest(
-        "/api",
-        Router::<AppState>::new()
-            .route("/data", get(handler::portfolio::get::handler))
-            .route("/ledgers", get(handler::ledger::list::handler))
-            .route("/ledgers/summary", get(handler::ledger::summary::handler))
-            .nest(
-                "/ledger/:id",
-                Router::<AppState>::new()
-                    .route(
-                        "/",
-                        get(handler::ledger::get::handler)
-                            .post(handler::ledger::create::handler)
-                            .put(handler::ledger::update::handler)
-                            .delete(handler::ledger::delete::handler),
-                    )
-                    .nest(
-                        "/files",
-                        Router::<AppState>::new()
-                            .route(
+    let app = Router::<AppState>::new()
+        .route("/data", get(handler::portfolio::get::handler))
+        .route("/ledgers", get(handler::ledger::list::handler))
+        .route("/ledgers/summary", get(handler::ledger::summary::handler))
+        .nest(
+            "/ledger/:id",
+            Router::<AppState>::new()
+                .route(
+                    "/",
+                    get(handler::ledger::get::handler)
+                        .post(handler::ledger::create::handler)
+                        .put(handler::ledger::update::handler)
+                        .delete(handler::ledger::delete::handler),
+                )
+                .nest(
+                    "/files",
+                    Router::<AppState>::new()
+                        .route(
+                            "/",
+                            get(handler::ledger::files::get::handler)
+                                .post(handler::ledger::files::post::handler),
+                        )
+                        .nest(
+                            "/:fileName",
+                            Router::<AppState>::new().route(
                                 "/",
-                                get(handler::ledger::files::get::handler)
-                                    .post(handler::ledger::files::post::handler),
-                            )
-                            .nest(
-                                "/:fileName",
-                                Router::<AppState>::new().route(
-                                    "/",
-                                    put(handler::ledger::files::put::handler)
-                                        .delete(handler::ledger::files::delete::handler),
-                                ),
+                                put(handler::ledger::files::put::handler)
+                                    .delete(handler::ledger::files::delete::handler),
                             ),
-                    ),
-            )
-            .route(
-                "/ledger",
-                post(handler::ledger::create::handler).put(handler::ledger::update::handler),
-            )
-            .route("/auth/oidc", get(handler::auth::oidc::oidc_auth))
-            .route(
-                "/auth/authorized",
-                get(handler::auth::login::login_authorized),
-            )
-            .route("/logout", get(handler::auth::logout::logout))
-            .with_state(AppState::new()?)
-            .layer(
-                CorsLayer::new()
-                    .allow_origin(AllowOrigin::predicate(move |origin, _parts| {
-                        if let Ok(origin) = origin.to_str() {
-                            origin.contains("127.0.0.1") || origin.contains("localhost")
-                        } else {
-                            false
-                        }
-                    }))
-                    .allow_methods([
-                        Method::GET,
-                        Method::POST,
-                        Method::PUT,
-                        Method::DELETE,
-                        Method::OPTIONS,
-                    ])
-                    .allow_headers(vec![
-                        AUTHORIZATION,
-                        ACCEPT,
-                        CONTENT_TYPE,
-                        ACCESS_CONTROL_ALLOW_CREDENTIALS,
-                    ])
-                    .allow_credentials(true)
-                    .max_age(std::time::Duration::from_secs(3600)),
-            ),
-    );
+                        ),
+                ),
+        )
+        .route(
+            "/ledger",
+            post(handler::ledger::create::handler).put(handler::ledger::update::handler),
+        )
+        .route("/auth/oidc", get(handler::auth::oidc::oidc_auth))
+        .route(
+            "/auth/authorized",
+            get(handler::auth::login::login_authorized),
+        )
+        .route("/logout", get(handler::auth::logout::logout))
+        .with_state(AppState::new()?)
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::predicate(move |origin, _parts| {
+                    if let Ok(origin) = origin.to_str() {
+                        origin.contains("127.0.0.1") || origin.contains("localhost")
+                    } else {
+                        false
+                    }
+                }))
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PUT,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ])
+                .allow_headers(vec![
+                    AUTHORIZATION,
+                    ACCEPT,
+                    CONTENT_TYPE,
+                    ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                ])
+                .allow_credentials(true)
+                .max_age(std::time::Duration::from_secs(3600)),
+        );
 
     // run it
     let server_address = std::env::var("SERVER_ADDRESS")?;
