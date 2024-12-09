@@ -13,7 +13,7 @@ use axum::http::Method;
 use axum::routing::{get, post, put};
 use axum::Router;
 use clap::Parser;
-use reqwest::header::ACCESS_CONTROL_ALLOW_CREDENTIALS;
+use reqwest::header::{ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_ORIGIN};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::state::AppState;
@@ -96,6 +96,7 @@ async fn serve() -> anyhow::Result<()> {
                     ACCEPT,
                     CONTENT_TYPE,
                     ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
                 ])
                 .allow_credentials(true)
                 .max_age(std::time::Duration::from_secs(3600)),
