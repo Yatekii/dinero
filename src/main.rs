@@ -77,7 +77,9 @@ async fn serve() -> anyhow::Result<()> {
             CorsLayer::new()
                 .allow_origin(AllowOrigin::predicate(move |origin, _parts| {
                     if let Ok(origin) = origin.to_str() {
-                        origin.contains("127.0.0.1") || origin.contains("localhost")
+                        origin.contains("127.0.0.1")
+                            || origin.contains("localhost")
+                            || origin.contains("zitadel.huesser.dev")
                     } else {
                         false
                     }
