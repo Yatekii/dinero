@@ -10,16 +10,17 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{error::AppError, state::PortfolioState};
+use crate::{error::AppError, handler::auth::user::User, state::PortfolioAdapter};
 
-#[debug_handler]
+#[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
+    State(adapter): State<PortfolioAdapter>,
     date_range: Query<DateRange>,
-    State(state): State<PortfolioState>,
+    user: User,
 ) -> Result<Json<LedgerSummary>, AppError> {
-    let guard = state.lock().await;
+    let portfolio = user.portfolio(adapter)?;
     let mut spending = HashMap::new();
-    for (id, account) in &guard.accounts {
+    for (id, account) in &portfolio.accounts {
         let categories = account.records.clone();
 
         let categories = if let Some(from) = &date_range.from {

@@ -16,7 +16,11 @@ export async function ledgerOverviewLoader({
 }) {
   const searchParams = new URL(request.url).searchParams;
   const response = await fetch(
-    `${API_URL}/ledgers/summary?${searchParams.toString()}`
+    `${API_URL}/ledgers/summary?${searchParams.toString()}`,
+    {
+      credentials: "include",
+      redirect: "follow",
+    }
   );
   const ledgers = (await response.json()) as LedgerSummary;
 

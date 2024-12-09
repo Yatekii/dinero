@@ -7,13 +7,21 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{error::AppError, fx::Currency, realms::portfolio::state::Account, state::AppState};
+use crate::{
+    error::AppError,
+    fx::Currency,
+    handler::auth::user::User,
+    realms::portfolio::state::Account,
+    state::{CacheState, PortfolioAdapter},
+};
 
-#[debug_handler]
+#[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
-    State(state): State<AppState>,
+    State(adapter): State<PortfolioAdapter>,
+    State(cache): State<CacheState>,
+    user: User,
 ) -> Result<Json<PortfolioSummaryResponse>, AppError> {
-    let portfolio = state.portfolio.lock().await;
+    let portfolio = user.portfolio(adapter)?;
 
     if portfolio.accounts.is_empty() {
         return Ok(Json(PortfolioSummaryResponse {
@@ -55,7 +63,7 @@ pub async fn handler(
     let mut ledgers = HashMap::new();
     for ledger in portfolio.accounts.values() {
         let rates = if ledger.currency != portfolio.base_currency {
-            fetch_rate(&state, ledger, portfolio.base_currency).await?
+            fetch_rate(cache.clone(), ledger, portfolio.base_currency).await?
         } else {
             BTreeMap::new()
         };
@@ -144,7 +152,7 @@ pub async fn handler(
         let mut transactions = ledger.records.clone();
         for transaction in &mut transactions {
             let rate = if ledger.currency != portfolio.base_currency {
-                let rates = fetch_rate(&state, ledger, portfolio.base_currency).await?;
+                let rates = fetch_rate(cache.clone(), ledger, portfolio.base_currency).await?;
                 rates[&transaction.date]
             } else {
                 1.0
@@ -215,11 +223,11 @@ pub struct PortfolioSummaryResponse {
 }
 
 async fn fetch_rate(
-    state: &AppState,
+    cache: CacheState,
     ledger: &Account,
     base_currency: Currency,
 ) -> Result<BTreeMap<NaiveDate, f64>, AppError> {
-    let mut cache = state.cache.lock().await;
+    let mut cache = cache.lock().await;
     let rate = cache.get(ledger.currency, base_currency).await?;
     Ok(rate.rates.clone())
 }

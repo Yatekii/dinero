@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref, path::Path};
 
 use anyhow::Result;
 use chrono::NaiveDate;
@@ -13,6 +13,7 @@ pub struct Portfolio {
     pub base_currency: Currency,
     pub stocks: Vec<Stock>,
     pub accounts: HashMap<String, Account>,
+    pub owner: Owner,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,14 +32,15 @@ pub struct Stock {
     pub cost_basis: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SerdeAccount {
     pub id: String,
+    /// The OIDC owner
+    pub owner: Owner,
     pub name: String,
     pub currency: Currency,
     pub format: BankFormat,
     pub initial_balance: Option<f64>,
-    #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,
     pub spending: bool,
 }
@@ -47,6 +49,8 @@ pub struct SerdeAccount {
 #[ts(export)]
 pub struct Account {
     pub id: String,
+    /// The OIDC owner
+    pub owner: Owner,
     pub name: String,
     pub currency: Currency,
     pub format: BankFormat,
@@ -84,4 +88,25 @@ pub enum Action {
     Update,
     Interest,
     Fee,
+}
+
+#[derive(
+    Debug, Default, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Hash, Clone, TS,
+)]
+#[ts(export)]
+#[serde(transparent)]
+pub struct Owner(String);
+
+impl Deref for Owner {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AsRef<Path> for Owner {
+    fn as_ref(&self) -> &Path {
+        Path::new(&self.0)
+    }
 }

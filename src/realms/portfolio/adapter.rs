@@ -5,39 +5,38 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Context, Ok, Result};
+use anyhow::{anyhow, bail, Context, Ok, Result};
 use axum::async_trait;
 
 use crate::{
     banks::{load, LedgerRecord},
     handler::ledger::{create::CreateLedgerRequest, update::UpdateLedgerRequest},
     processing::process,
-    state::PortfolioState,
 };
 
-use super::state::{Account, Portfolio, SerdeAccount, SerdePortfolio};
+use super::state::{Account, Owner, Portfolio, SerdeAccount, SerdePortfolio};
 
 #[async_trait]
 pub trait Adapter: Send + Sync {
-    fn load(&self) -> Result<Portfolio>;
+    fn load(&self, owner: Owner) -> Result<Portfolio>;
     fn store(&self, state: &Portfolio) -> Result<()>;
-    fn list_files(&self) -> Result<HashMap<String, Vec<PathBuf>>>;
-    fn load_file(&self, id: &str, path: &Path) -> Result<Vec<LedgerRecord>>;
     async fn create_ledger(
         &self,
-        portfolio: PortfolioState,
+        portfolio: Portfolio,
         account: CreateLedgerRequest,
     ) -> Result<String>;
     async fn update_ledger(
         &self,
-        portfolio: PortfolioState,
+        portfolio: Portfolio,
         id: String,
         account: UpdateLedgerRequest,
     ) -> Result<String>;
-    async fn delete_ledger(&self, portfolio: PortfolioState, id: &str) -> Result<()>;
-    fn add_file(&self, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
-    fn update_file(&self, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
-    fn delete_file(&self, id: &str, name: &str) -> Result<()>;
+    async fn delete_ledger(&self, portfolio: Portfolio, id: &str) -> Result<()>;
+    fn list_files(&self, owner: &Owner) -> Result<HashMap<String, Vec<PathBuf>>>;
+    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<LedgerRecord>>;
+    fn add_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
+    fn update_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
+    fn delete_file(&self, owner: &Owner, id: &str, name: &str) -> Result<()>;
 }
 
 pub struct Production {
@@ -64,6 +63,7 @@ impl Adapter for Production {
                     id.clone(),
                     SerdeAccount {
                         id: ledger.id.clone(),
+                        owner: ledger.owner.clone(),
                         name: ledger.name.clone(),
                         currency: ledger.currency,
                         format: ledger.format,
@@ -82,7 +82,10 @@ impl Adapter for Production {
                 stocks: vec![],
             },
         )?;
-        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
+        let path = self
+            .path
+            .join(Self::PORTFOLIO_LEDGER_DIR)
+            .join(&portfolio.owner);
         std::fs::create_dir_all(&path)?;
         // TODO:
         // for (id, ledger) in &portfolio.accounts {
@@ -93,11 +96,11 @@ impl Adapter for Production {
         Ok(())
     }
 
-    fn load(&self) -> Result<Portfolio> {
+    fn load(&self, owner: Owner) -> Result<Portfolio> {
         let file = File::open(self.path.join(Self::PORTFOLIO_FILE_NAME))?;
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
 
-        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
+        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&owner);
         let accounts = portfolio
             .accounts
             .into_iter()
@@ -115,6 +118,7 @@ impl Adapter for Production {
                     id.clone(),
                     Account {
                         id,
+                        owner: account.owner,
                         name: account.name,
                         currency: account.currency,
                         format: account.format,
@@ -131,14 +135,15 @@ impl Adapter for Production {
             base_currency: portfolio.base_currency,
             stocks: vec![],
             accounts,
+            owner,
         })
     }
 
-    fn list_files(&self) -> Result<HashMap<String, Vec<PathBuf>>> {
+    fn list_files(&self, owner: &Owner) -> Result<HashMap<String, Vec<PathBuf>>> {
         let file = File::open(self.path.join(Self::PORTFOLIO_FILE_NAME))?;
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
 
-        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
+        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         let lists = portfolio
             .accounts
             .into_iter()
@@ -159,11 +164,11 @@ impl Adapter for Production {
         Ok(lists)
     }
 
-    fn load_file(&self, id: &str, path: &Path) -> Result<Vec<LedgerRecord>> {
+    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<LedgerRecord>> {
         let file = File::open(self.path.join(Self::PORTFOLIO_FILE_NAME))?;
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
 
-        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
+        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         let ledger = portfolio
             .accounts
             .get(id)
@@ -171,30 +176,30 @@ impl Adapter for Production {
         load(id, dir_path.join(id).join(path), ledger.format)
     }
 
-    fn add_file(&self, id: &str, name: &str, content: Vec<u8>) -> Result<()> {
-        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
+    fn add_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()> {
+        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         let file_path = dir_path.join(id).join(name);
         let mut file = File::create(file_path)?;
         file.write_all(&content)?;
         Ok(())
     }
 
-    fn update_file(&self, id: &str, name: &str, content: Vec<u8>) -> Result<()> {
-        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
+    fn update_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()> {
+        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         let mut file = File::open(dir_path.join(id).join(name))?;
         file.write_all(&content)?;
         Ok(())
     }
 
-    fn delete_file(&self, id: &str, name: &str) -> Result<()> {
-        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR);
+    fn delete_file(&self, owner: &Owner, id: &str, name: &str) -> Result<()> {
+        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         std::fs::remove_file(dir_path.join(id).join(name))?;
         Ok(())
     }
 
     async fn create_ledger(
         &self,
-        portfolio: PortfolioState,
+        mut portfolio: Portfolio,
         account: CreateLedgerRequest,
     ) -> Result<String> {
         let id = slug::slugify(format!("{}-{}", &account.name, &account.currency));
@@ -207,7 +212,12 @@ impl Adapter for Production {
             spending,
         } = account;
 
-        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&id);
+        let owner = portfolio.owner.clone();
+        let dir_path = self
+            .path
+            .join(Self::PORTFOLIO_LEDGER_DIR)
+            .join(&owner)
+            .join(&id);
         std::fs::create_dir_all(&dir_path).with_context(|| {
             anyhow!(
                 "Could not create ledger directory at `{}`",
@@ -215,11 +225,11 @@ impl Adapter for Production {
             )
         })?;
 
-        let mut guard = portfolio.lock().await;
-        guard.accounts.insert(
+        portfolio.accounts.insert(
             id.clone(),
             Account {
                 id: id.clone(),
+                owner,
                 name,
                 currency,
                 format,
@@ -229,18 +239,19 @@ impl Adapter for Production {
                 records: vec![],
             },
         );
-        self.store(&guard)?;
+        self.store(&portfolio)?;
 
         Ok(id)
     }
 
     async fn update_ledger(
         &self,
-        portfolio: PortfolioState,
+        mut portfolio: Portfolio,
         id: String,
         account: UpdateLedgerRequest,
     ) -> Result<String> {
         let new_id = slug::slugify(format!("{}-{}", &account.name, &account.currency));
+        let owner = &portfolio.owner;
         let UpdateLedgerRequest {
             name,
             currency,
@@ -250,17 +261,18 @@ impl Adapter for Production {
             spending,
         } = account;
 
-        if new_id != id {
-            let old_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&id);
-            let new_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&new_id);
-            std::fs::rename(old_path, new_path)?;
-        }
+        let Some(account) = portfolio.accounts.get(&id) else {
+            bail!("Ledger does not exist.");
+        };
 
-        let mut guard = portfolio.lock().await;
-        guard.accounts.insert(
-            id.clone(),
+        if &account.owner != owner {
+            bail!("Owner does not match!");
+        }
+        portfolio.accounts.insert(
+            new_id.clone(),
             Account {
                 id: new_id.clone(),
+                owner: owner.clone(),
                 name,
                 currency,
                 format,
@@ -270,17 +282,42 @@ impl Adapter for Production {
                 records: vec![],
             },
         );
-        self.store(&guard)?;
+        if new_id != id {
+            let old_path = self
+                .path
+                .join(Self::PORTFOLIO_LEDGER_DIR)
+                .join(owner)
+                .join(&id);
+            let new_path = self
+                .path
+                .join(Self::PORTFOLIO_LEDGER_DIR)
+                .join(owner)
+                .join(&new_id);
+            std::fs::rename(old_path, new_path)?;
+            portfolio.accounts.remove(&id);
+        }
+        self.store(&portfolio)?;
 
         Ok(new_id)
     }
 
-    async fn delete_ledger(&self, portfolio: PortfolioState, id: &str) -> Result<()> {
-        let mut guard = portfolio.lock().await;
-        guard.accounts.remove(id);
-        self.store(&guard)?;
+    async fn delete_ledger(&self, mut portfolio: Portfolio, id: &str) -> Result<()> {
+        let Some(account) = portfolio.accounts.get(id) else {
+            bail!("Ledger does not exist.");
+        };
 
-        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(id);
+        if account.owner != portfolio.owner {
+            bail!("Owner does not match!");
+        }
+
+        portfolio.accounts.remove(id);
+        self.store(&portfolio)?;
+
+        let dir_path = self
+            .path
+            .join(Self::PORTFOLIO_LEDGER_DIR)
+            .join(portfolio.owner)
+            .join(id);
         std::fs::remove_dir(&dir_path).with_context(|| {
             anyhow!(
                 "Could not create ledger directory at `{}`",
@@ -296,11 +333,12 @@ pub struct Test;
 
 #[async_trait]
 impl Adapter for Test {
-    fn load(&self) -> Result<Portfolio> {
+    fn load(&self, owner: Owner) -> Result<Portfolio> {
         Ok(Portfolio {
             base_currency: crate::fx::Currency::CHF,
             stocks: Default::default(),
             accounts: Default::default(),
+            owner,
         })
     }
 
@@ -308,29 +346,29 @@ impl Adapter for Test {
         Ok(())
     }
 
-    fn list_files(&self) -> Result<HashMap<String, Vec<PathBuf>>> {
+    fn list_files(&self, _owner: &Owner) -> Result<HashMap<String, Vec<PathBuf>>> {
         Ok(Default::default())
     }
 
-    fn load_file(&self, _id: &str, _path: &Path) -> Result<Vec<LedgerRecord>> {
+    fn load_file(&self, _owner: &Owner, _id: &str, _path: &Path) -> Result<Vec<LedgerRecord>> {
         Ok(Default::default())
     }
 
-    fn add_file(&self, _id: &str, _name: &str, _content: Vec<u8>) -> Result<()> {
+    fn add_file(&self, _owner: &Owner, _id: &str, _name: &str, _content: Vec<u8>) -> Result<()> {
         Ok(())
     }
 
-    fn update_file(&self, _id: &str, _name: &str, _content: Vec<u8>) -> Result<()> {
+    fn update_file(&self, _owner: &Owner, _id: &str, _name: &str, _content: Vec<u8>) -> Result<()> {
         Ok(())
     }
 
-    fn delete_file(&self, _id: &str, _name: &str) -> Result<()> {
+    fn delete_file(&self, _owner: &Owner, _id: &str, _name: &str) -> Result<()> {
         Ok(())
     }
 
     async fn create_ledger(
         &self,
-        _portfolio: PortfolioState,
+        _portfolio: Portfolio,
         _account: CreateLedgerRequest,
     ) -> Result<String> {
         Ok(String::new())
@@ -338,14 +376,14 @@ impl Adapter for Test {
 
     async fn update_ledger(
         &self,
-        _portfolio: PortfolioState,
+        _portfolio: Portfolio,
         _id: String,
         _account: UpdateLedgerRequest,
     ) -> Result<String> {
         Ok(String::new())
     }
 
-    async fn delete_ledger(&self, _portfolio: PortfolioState, _id: &str) -> Result<()> {
+    async fn delete_ledger(&self, _portfolio: Portfolio, _id: &str) -> Result<()> {
         Ok(())
     }
 }

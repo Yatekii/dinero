@@ -17,11 +17,17 @@ export type Params<Key extends string = string> = {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgerLoader({ params }: { params: Params }) {
-  let response = await fetch(`${API_URL}/ledgers`);
+  let response = await fetch(`${API_URL}/ledgers`, {
+    credentials: "include",
+    redirect: "follow",
+  });
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
   let data = undefined;
   if (params.ledgerId != undefined) {
-    response = await fetch(`${API_URL}/ledger/${params.ledgerId}`);
+    response = await fetch(`${API_URL}/ledger/${params.ledgerId}`, {
+      credentials: "include",
+      redirect: "follow",
+    });
     data = (await response.json()) as Account;
   }
 

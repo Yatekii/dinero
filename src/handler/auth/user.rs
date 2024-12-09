@@ -1,3 +1,4 @@
+use anyhow::Result;
 use async_session::{MemoryStore, SessionStore};
 use axum::{
     async_trait,
@@ -10,20 +11,31 @@ use axum_extra::{headers, typed_header::TypedHeaderRejectionReason, TypedHeader}
 use reqwest::header;
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    realms::portfolio::state::{Owner, Portfolio},
+    state::PortfolioAdapter,
+};
+
 use super::COOKIE_NAME;
 
 // The user data we'll get back from OIDC.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    pub sub: String,
+    pub sub: Owner,
     pub name: String,
+}
+
+impl User {
+    pub fn portfolio(&self, adapter: PortfolioAdapter) -> Result<Portfolio> {
+        adapter.load(self.sub.clone())
+    }
 }
 
 pub struct AuthRedirect;
 
 impl IntoResponse for AuthRedirect {
     fn into_response(self) -> Response {
-        Redirect::temporary("/auth/oidc").into_response()
+        Redirect::temporary("/api/auth/oidc").into_response()
     }
 }
 

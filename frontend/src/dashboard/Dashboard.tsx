@@ -11,7 +11,10 @@ import { API_URL } from "../main";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function dataLoader() {
-  const response = await fetch(`${API_URL}/data`);
+  const response = await fetch(`${API_URL}/data`, {
+    credentials: "include",
+    redirect: "follow",
+  });
   const data = (await response.json()) as PortfolioSummaryResponse;
 
   return data;

@@ -4,17 +4,16 @@ use axum::{
     Json,
 };
 
-use crate::{
-    error::AppError,
-    state::{PortfolioAdapter, PortfolioState},
-};
+use crate::{error::AppError, handler::auth::user::User, state::PortfolioAdapter};
 
-#[debug_handler]
+#[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
-    State((adapter, state)): State<(PortfolioAdapter, PortfolioState)>,
+    State(adapter): State<PortfolioAdapter>,
     Path(id): Path<String>,
+    user: User,
 ) -> Result<Json<()>, AppError> {
-    adapter.delete_ledger(state, &id).await?;
+    let portfolio = user.portfolio(adapter.clone())?;
+    adapter.delete_ledger(portfolio, &id).await?;
 
     Ok(Json(()))
 }

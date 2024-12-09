@@ -7,21 +7,26 @@ use axum::{
 use chrono::NaiveDate;
 
 use crate::{
-    banks::ExtendedLedgerRecord, error::AppError, realms::portfolio::state::Account,
-    state::PortfolioState,
+    banks::ExtendedLedgerRecord, error::AppError, handler::auth::user::User,
+    realms::portfolio::state::Account, state::PortfolioAdapter,
 };
 
-#[debug_handler]
+#[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
-    State(state): State<PortfolioState>,
+    State(adapter): State<PortfolioAdapter>,
     Path(id): Path<String>,
     Query(filter): Query<Filter>,
+    user: User,
 ) -> Result<Json<Account>, AppError> {
-    let guard = state.lock().await;
-    let account = &guard.accounts.get(&id);
+    let portfolio = user.portfolio(adapter)?;
+    let account = &portfolio.accounts.get(&id);
     let Some(account) = account else {
         return Err(anyhow!("{id} was not found"))?;
     };
+
+    if account.owner != user.sub {
+        return Err(anyhow!("Not authorized!"))?;
+    }
 
     let mut transactions: Vec<ExtendedLedgerRecord> = account.records.clone();
 
@@ -37,6 +42,7 @@ pub async fn handler(
 
     let account = Account {
         id: account.id.clone(),
+        owner: user.sub,
         name: account.name.clone(),
         currency: account.currency,
         format: account.format,

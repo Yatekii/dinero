@@ -83,6 +83,8 @@ export function LedgerCreate() {
               currency,
               spending: false,
             } as CreateLedgerRequest),
+            credentials: "include",
+            redirect: "follow",
           });
           if (response.status == 200) {
             const data = (await response.json()) as CreateLedgerResponse;

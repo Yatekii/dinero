@@ -32,11 +32,17 @@ export type Params<Key extends string = string> = {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgerFileLoader({ params }: { params: Params }) {
-  let response = await fetch(`${API_URL}/ledgers`);
+  let response = await fetch(`${API_URL}/ledgers`, {
+    credentials: "include",
+    redirect: "follow",
+  });
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
   let data = undefined;
   if (params.ledgerId != undefined) {
-    response = await fetch(`${API_URL}/ledger/${params.ledgerId}/files`);
+    response = await fetch(`${API_URL}/ledger/${params.ledgerId}/files`, {
+      credentials: "include",
+      redirect: "follow",
+    });
     data = (await response.json()) as LedgerFiles;
   }
 
@@ -57,6 +63,8 @@ export function LedgerFileView() {
     await fetch(`${API_URL}/ledger/${id}/files/${name}`, {
       method: "PUT",
       body,
+      credentials: "include",
+      redirect: "follow",
     });
 
     navigate(`/ledger/${id}/files`);
@@ -68,6 +76,8 @@ export function LedgerFileView() {
     await fetch(`${API_URL}/ledger/${id}/files`, {
       method: "POST",
       body,
+      credentials: "include",
+      redirect: "follow",
     });
 
     navigate(`/ledger/${id}/files`);
@@ -77,6 +87,8 @@ export function LedgerFileView() {
     await alert(`Are you sure you want to delete the file ${name}?`);
     await fetch(`${API_URL}/api/ledger/${id}/files/${name}`, {
       method: "DELETE",
+      credentials: "include",
+      redirect: "follow",
     });
 
     navigate(`/ledger/${id}/files`);
@@ -229,6 +241,8 @@ function Import({ ledgerId }: { ledgerId: string }) {
             body: JSON.stringify({
               transactions_data: content,
             }),
+            credentials: "include",
+            redirect: "follow",
           });
 
           if (response.ok) {

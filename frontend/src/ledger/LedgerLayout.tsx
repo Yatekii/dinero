@@ -12,7 +12,10 @@ import { API_URL } from "../main";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgersLoader() {
-  const response = await fetch(`${API_URL}/ledgers`);
+  const response = await fetch(`${API_URL}/ledgers`, {
+    credentials: "include",
+    redirect: "follow",
+  });
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
 
   return { ledgers };

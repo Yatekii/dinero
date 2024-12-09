@@ -16,7 +16,10 @@ export type Params<Key extends string = string> = {
 export async function ledgerMetaLoader({ params }: { params: Params }) {
   let currentLedger;
   if (params.ledgerId != undefined) {
-    const response = await fetch(`${API_URL}/ledger/${params.ledgerId}`);
+    const response = await fetch(`${API_URL}/ledger/${params.ledgerId}`, {
+      credentials: "include",
+      redirect: "follow",
+    });
     currentLedger = (await response.json()) as Account;
   }
 
@@ -116,6 +119,8 @@ export function LedgerMetaView() {
                 currency,
                 spending: false,
               } as CreateLedgerRequest),
+              credentials: "include",
+              redirect: "follow",
             }
           );
           if (response.status == 200) {
@@ -137,6 +142,8 @@ export function LedgerMetaView() {
             `${API_URL}/ledger/${currentLedger.id}`,
             {
               method: "DELETE",
+              credentials: "include",
+              redirect: "follow",
             }
           );
           if (response.status == 200) {

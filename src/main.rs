@@ -97,6 +97,7 @@ async fn serve() -> anyhow::Result<()> {
                         CONTENT_TYPE,
                         ACCESS_CONTROL_ALLOW_CREDENTIALS,
                     ])
+                    .allow_credentials(true)
                     .max_age(std::time::Duration::from_secs(3600)),
             ),
     );

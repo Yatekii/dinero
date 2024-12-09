@@ -6,17 +6,13 @@ use axum::extract::FromRef;
 use oauth2::{basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
 use tokio::sync::Mutex;
 
-use crate::{
-    fx::HistoryCache,
-    realms::portfolio::{self, adapter::Adapter, state::Portfolio},
-};
+use crate::{fx::HistoryCache, realms::portfolio};
 
 // the application state
 #[derive(Clone)]
 pub struct AppState {
     pub cache: CacheState,
     pub portfolio_adapter: PortfolioAdapter,
-    pub portfolio: PortfolioState,
     pub oauth_client: BasicClient,
     pub session_store: MemoryStore,
     pub frontend_url: String,
@@ -25,12 +21,10 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Result<Self> {
         let adapter = portfolio::adapter::Production::new("portfolio/".into());
-        let portfolio = adapter.load()?;
         let frontend_url = env::var("FRONTEND_URL").context("Missing FRONTEND_URL!")?;
         Ok(Self {
             cache: Arc::new(Mutex::new(HistoryCache::load().unwrap())),
             portfolio_adapter: Arc::new(adapter),
-            portfolio: Arc::new(Mutex::new(portfolio)),
             oauth_client: Self::oauth_client()?,
             session_store: MemoryStore::new(),
             frontend_url,
@@ -65,28 +59,11 @@ impl FromRef<AppState> for CacheState {
     }
 }
 
-pub type PortfolioState = Arc<Mutex<Portfolio>>;
-
-impl FromRef<AppState> for PortfolioState {
-    fn from_ref(app_state: &AppState) -> PortfolioState {
-        app_state.portfolio.clone()
-    }
-}
-
 pub type PortfolioAdapter = Arc<dyn portfolio::adapter::Adapter>;
 
 impl FromRef<AppState> for PortfolioAdapter {
     fn from_ref(app_state: &AppState) -> PortfolioAdapter {
         app_state.portfolio_adapter.clone()
-    }
-}
-
-impl FromRef<AppState> for (PortfolioAdapter, PortfolioState) {
-    fn from_ref(app_state: &AppState) -> (PortfolioAdapter, PortfolioState) {
-        (
-            app_state.portfolio_adapter.clone(),
-            app_state.portfolio.clone(),
-        )
     }
 }
 

@@ -8,19 +8,19 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::{
-    cli::BankFormat,
-    error::AppError,
-    fx::Currency,
-    state::{PortfolioAdapter, PortfolioState},
+    cli::BankFormat, error::AppError, fx::Currency, handler::auth::user::User,
+    state::PortfolioAdapter,
 };
 
-#[debug_handler]
+#[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
-    State((adapter, state)): State<(PortfolioAdapter, PortfolioState)>,
+    State(adapter): State<PortfolioAdapter>,
     Path(id): Path<String>,
+    user: User,
     Json(payload): Json<UpdateLedgerRequest>,
 ) -> Result<Json<UpdateLedgerResponse>, AppError> {
-    let id = adapter.update_ledger(state, id, payload).await?;
+    let portfolio = user.portfolio(adapter.clone())?;
+    let id = adapter.update_ledger(portfolio, id, payload).await?;
 
     Ok(Json(UpdateLedgerResponse { id }))
 }

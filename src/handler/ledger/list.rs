@@ -2,15 +2,16 @@ use axum::{debug_handler, extract::State, Json};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{error::AppError, fx::Currency, state::PortfolioState};
+use crate::{error::AppError, fx::Currency, handler::auth::user::User, state::PortfolioAdapter};
 
-#[debug_handler]
+#[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
-    State(state): State<PortfolioState>,
+    State(adapter): State<PortfolioAdapter>,
+    user: User,
 ) -> Result<Json<ListLedgerResponse>, AppError> {
-    let guard = state.lock().await;
+    let portfolio = user.portfolio(adapter)?;
     Ok(Json(ListLedgerResponse {
-        ledgers: guard
+        ledgers: portfolio
             .accounts
             .iter()
             .map(|(id, ledger)| LedgerMeta {

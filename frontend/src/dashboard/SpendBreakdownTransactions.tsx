@@ -26,7 +26,11 @@ export function SpendBreakdownTransactions({
       const from = `${year}-${month}-01`;
       const to = `${year}-${month}-${daysInMonth(month, year)}`;
       const response = await fetch(
-        `${API_URL}/ledger/neon?from=${from}&to=${to}`
+        `${API_URL}/ledger/neon?from=${from}&to=${to}`,
+        {
+          credentials: "include",
+          redirect: "follow",
+        }
       );
       const data = (await response.json()) as Account;
       setData(data);

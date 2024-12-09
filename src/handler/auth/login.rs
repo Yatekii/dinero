@@ -119,7 +119,7 @@ pub async fn login_authorized(
         headers,
         Redirect::to(&format!(
             "{}?userid={}&username={}",
-            frontend_url, user_data.sub, user_data.name
+            frontend_url, &*user_data.sub, user_data.name
         )),
     ))
 }

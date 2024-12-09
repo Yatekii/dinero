@@ -80,6 +80,7 @@ function MainMenu({ username }: { username: string }) {
             onClick={async () => {
               await fetch(`${API_URL}/logout`, {
                 credentials: "include",
+                redirect: "follow",
               });
             }}
             className="p-1 py-1 text-gray-600 mt-5 hover:underline"
