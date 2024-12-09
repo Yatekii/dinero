@@ -103,9 +103,8 @@ async fn serve() -> anyhow::Result<()> {
     );
 
     // run it
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-        .await
-        .unwrap();
+    let server_address = std::env::var("SERVER_ADDRESS")?;
+    let listener = tokio::net::TcpListener::bind(server_address).await.unwrap();
     println!("listening on http://{}", listener.local_addr()?);
     axum::serve(listener, app).await.unwrap();
 
