@@ -13,7 +13,7 @@ use axum::http::Method;
 use axum::routing::{get, post, put};
 use axum::Router;
 use clap::Parser;
-use reqwest::header::{ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_ORIGIN};
+use reqwest::header::ACCESS_CONTROL_ALLOW_CREDENTIALS;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::state::AppState;
@@ -29,49 +29,54 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn serve() -> anyhow::Result<()> {
+    let base_path = std::env::var("BASE_PATH")?;
     // build our application with a route
-    let app = Router::<AppState>::new()
-        .route("/data", get(handler::portfolio::get::handler))
-        .route("/ledgers", get(handler::ledger::list::handler))
-        .route("/ledgers/summary", get(handler::ledger::summary::handler))
+    let app = Router::new()
         .nest(
-            "/ledger/:id",
+            &base_path,
             Router::<AppState>::new()
-                .route(
-                    "/",
-                    get(handler::ledger::get::handler)
-                        .post(handler::ledger::create::handler)
-                        .put(handler::ledger::update::handler)
-                        .delete(handler::ledger::delete::handler),
-                )
+                .route("/data", get(handler::portfolio::get::handler))
+                .route("/ledgers", get(handler::ledger::list::handler))
+                .route("/ledgers/summary", get(handler::ledger::summary::handler))
                 .nest(
-                    "/files",
+                    "/ledger/:id",
                     Router::<AppState>::new()
                         .route(
                             "/",
-                            get(handler::ledger::files::get::handler)
-                                .post(handler::ledger::files::post::handler),
+                            get(handler::ledger::get::handler)
+                                .post(handler::ledger::create::handler)
+                                .put(handler::ledger::update::handler)
+                                .delete(handler::ledger::delete::handler),
                         )
                         .nest(
-                            "/:fileName",
-                            Router::<AppState>::new().route(
-                                "/",
-                                put(handler::ledger::files::put::handler)
-                                    .delete(handler::ledger::files::delete::handler),
-                            ),
+                            "/files",
+                            Router::<AppState>::new()
+                                .route(
+                                    "/",
+                                    get(handler::ledger::files::get::handler)
+                                        .post(handler::ledger::files::post::handler),
+                                )
+                                .nest(
+                                    "/:fileName",
+                                    Router::<AppState>::new().route(
+                                        "/",
+                                        put(handler::ledger::files::put::handler)
+                                            .delete(handler::ledger::files::delete::handler),
+                                    ),
+                                ),
                         ),
-                ),
+                )
+                .route(
+                    "/ledger",
+                    post(handler::ledger::create::handler).put(handler::ledger::update::handler),
+                )
+                .route("/auth/oidc", get(handler::auth::oidc::oidc_auth))
+                .route(
+                    "/auth/authorized",
+                    get(handler::auth::login::login_authorized),
+                )
+                .route("/logout", get(handler::auth::logout::logout)),
         )
-        .route(
-            "/ledger",
-            post(handler::ledger::create::handler).put(handler::ledger::update::handler),
-        )
-        .route("/auth/oidc", get(handler::auth::oidc::oidc_auth))
-        .route(
-            "/auth/authorized",
-            get(handler::auth::login::login_authorized),
-        )
-        .route("/logout", get(handler::auth::logout::logout))
         .with_state(AppState::new()?)
         .layer(
             CorsLayer::new()
