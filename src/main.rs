@@ -81,13 +81,14 @@ async fn serve() -> anyhow::Result<()> {
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::predicate(move |origin, _parts| {
-                    if let Ok(origin) = origin.to_str() {
+                    dbg!(if let Ok(origin) = origin.to_str() {
                         origin.contains("127.0.0.1")
                             || origin.contains("localhost")
                             || origin.contains("zitadel.huesser.dev")
                     } else {
                         false
-                    }
+                    });
+                    true
                 }))
                 .allow_methods([
                     Method::GET,
