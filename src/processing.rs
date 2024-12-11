@@ -7,7 +7,7 @@ pub fn process(
     initial_balance: Option<f64>,
     initial_date: Option<NaiveDate>,
 ) -> anyhow::Result<Vec<ExtendedLedgerRecord>> {
-    let incoming = data
+    let mut incoming = data
         .into_iter()
         .map(|v| ExtendedLedgerRecord {
             date: v.date,
@@ -20,7 +20,7 @@ pub fn process(
             comments: "".to_string(),
             checked: false,
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     let records =
         if let (Some(initial_balance), Some(initial_date)) = (initial_balance, initial_date) {
@@ -38,9 +38,8 @@ pub fn process(
                 checked: false,
             };
 
-            let mut r = vec![initial];
-            r.extend(incoming);
-            r
+            incoming.push(initial);
+            incoming
         } else {
             incoming
         };
