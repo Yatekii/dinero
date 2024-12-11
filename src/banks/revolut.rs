@@ -81,7 +81,7 @@ fn parse_date_with_time<'de, D: Deserializer<'de>>(de: D) -> Result<Option<Naive
     struct DateVisitor;
     struct MaybeDateVisitor;
 
-    impl<'de> Visitor<'de> for DateVisitor {
+    impl Visitor<'_> for DateVisitor {
         type Value = NaiveDate;
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>

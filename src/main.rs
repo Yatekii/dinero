@@ -8,11 +8,15 @@ pub mod processing;
 pub mod realms;
 mod state;
 
+use std::collections::HashMap;
+
+use anyhow::Result;
 use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use axum::http::Method;
 use axum::routing::{get, post, put};
 use axum::Router;
 use clap::Parser;
+use realms::portfolio::state::SerdePortfolio;
 use reqwest::header::ACCESS_CONTROL_ALLOW_CREDENTIALS;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
@@ -21,6 +25,9 @@ use crate::state::AppState;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
+
+    init()?;
+
     match cli::Args::parse().command {
         cli::Command::Serve(_args) => serve().await?,
     }
@@ -81,13 +88,13 @@ async fn serve() -> anyhow::Result<()> {
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::predicate(move |origin, _parts| {
-                    dbg!(if let Ok(origin) = origin.to_str() {
-                        origin.contains("127.0.0.1")
-                            || origin.contains("localhost")
-                            || origin.contains("zitadel.huesser.dev")
-                    } else {
-                        false
-                    });
+                    // if let Ok(origin) = origin.to_str() {
+                    //     origin.contains("127.0.0.1")
+                    //         || origin.contains("localhost")
+                    //         || origin.contains("zitadel.huesser.dev")
+                    // } else {
+                    //     false
+                    // }
                     true
                 }))
                 .allow_methods([
@@ -112,6 +119,23 @@ async fn serve() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(server_address).await.unwrap();
     println!("listening on http://{}", listener.local_addr()?);
     axum::serve(listener, app).await.unwrap();
+
+    Ok(())
+}
+
+fn init() -> Result<()> {
+    std::fs::create_dir_all("portfolio/ledgers")?;
+    std::fs::create_dir_all("portfolio/fx")?;
+    if !std::fs::exists("portfolio/portfolio.yaml")? {
+        serde_yaml::to_writer(
+            std::fs::File::create("portfolio/portfolio.yaml")?,
+            &SerdePortfolio {
+                base_currency: fx::Currency::CHF,
+                stocks: vec![],
+                accounts: HashMap::new(),
+            },
+        )?;
+    }
 
     Ok(())
 }

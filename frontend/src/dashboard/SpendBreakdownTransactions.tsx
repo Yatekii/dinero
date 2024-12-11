@@ -1,4 +1,6 @@
 import {
+  SearchSelect,
+  SearchSelectItem,
   Table,
   TableBody,
   TableCell,
@@ -10,6 +12,8 @@ import { SpendPerMonth } from "../bindings/SpendPerMonth";
 import { useEffect, useState } from "react";
 import { Account } from "../bindings/Account";
 import { API_URL } from "../main";
+import { ListLedgerResponse } from "../bindings/ListLedgerResponse";
+import { LedgerMeta } from "../bindings/LedgerMeta";
 
 export function SpendBreakdownTransactions({
   presets,
@@ -17,16 +21,31 @@ export function SpendBreakdownTransactions({
   spendPerMonth: SpendPerMonth;
   presets: Preset[];
 }) {
+  const [ledgers, setLedgers] = useState([] as LedgerMeta[]);
+  const [ledger, setLedger] = useState(undefined as LedgerMeta | undefined);
   const [data, setData] = useState(undefined as Account | undefined);
 
   useEffect(() => {
     const load = async () => {
+      const response = await fetch(`${API_URL}/ledgers`, {
+        credentials: "include",
+        redirect: "follow",
+      });
+      const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
+      setLedgers(ledgers);
+      setLedger(ledgers.length > 0 ? ledgers[0] : undefined);
+    };
+    load();
+  }, [presets]);
+
+  useEffect(() => {
+    const load = async (ledger: LedgerMeta) => {
       const year = presets[0].year;
       const month = presets[0].month;
       const from = `${year}-${month}-01`;
       const to = `${year}-${month}-${daysInMonth(month, year)}`;
       const response = await fetch(
-        `${API_URL}/ledger/neon?from=${from}&to=${to}`,
+        `${API_URL}/ledger/${ledger.id}?from=${from}&to=${to}`,
         {
           credentials: "include",
           redirect: "follow",
@@ -35,11 +54,21 @@ export function SpendBreakdownTransactions({
       const data = (await response.json()) as Account;
       setData(data);
     };
-    load();
-  }, [presets]);
+    if (ledger) {
+      load(ledger);
+    }
+  }, [presets, ledger]);
 
   return (
     <>
+      <SearchSelect
+        className="my-2"
+        onValueChange={(v) => setLedger(ledgers.find((l) => l.id == v))}
+      >
+        {ledgers.map((l) => (
+          <SearchSelectItem value={l.id}>{l.name}</SearchSelectItem>
+        ))}
+      </SearchSelect>
       {data && (
         <Table className="mt-5">
           <TableHead>
