@@ -3,10 +3,10 @@ import { useState } from "react";
 import { CreateLedgerRequest } from "../bindings/CreateLedgerRequest";
 import { Checkbox } from "../components/Checkbox";
 import { useLoaderData, useNavigate } from "react-router-dom";
-import { CreateLedgerResponse } from "../bindings/CreateLedgerResponse";
 import { Account } from "../bindings/Account";
 import { BANKS, CURRENCIES } from "../lib/currency";
 import { API_URL } from "../main";
+import { UpdateLedgerResponse } from "../bindings/UpdateLedgerResponse";
 
 export type Params<Key extends string = string> = {
   readonly [key in Key]: string | undefined;
@@ -35,6 +35,7 @@ export function LedgerMetaView() {
 
   const [format, setFormat] = useState(currentLedger?.format ?? "neon");
   const [name, setName] = useState(currentLedger?.name);
+  const [spending, setSpending] = useState(false as boolean | "indeterminate");
   const [initialBalance, setInitialBalance] = useState(
     "" + (currentLedger?.initial_balance ?? "")
   );
@@ -54,6 +55,16 @@ export function LedgerMetaView() {
     <>
       <Title className="mb-2">Change {currentLedger.id}</Title>
       <TextInput placeholder="Name" value={name} onValueChange={setName} />
+      <div className="flex py-0 mt-5">
+        <Checkbox
+          checked={spending}
+          onCheckedChange={setSpending}
+          className="mt-1 mr-1"
+        />
+        <label className="text-gray-600">
+          Spending account (used to select accounts for analysis)
+        </label>
+      </div>
       <div className="flex py-0 mt-5">
         <Checkbox
           checked={hasInitialDate}
@@ -117,14 +128,14 @@ export function LedgerMetaView() {
                 initialBalance: hasInitialDate ? +initialBalance : undefined,
                 initialDate: hasInitialDate ? +initialDate : undefined,
                 currency,
-                spending: false,
+                spending,
               } as CreateLedgerRequest),
               credentials: "include",
               redirect: "follow",
             }
           );
           if (response.status == 200) {
-            const data = (await response.json()) as CreateLedgerResponse;
+            const data = (await response.json()) as UpdateLedgerResponse;
             navigate(`/ledger/${data.id}/meta`);
           }
         }}

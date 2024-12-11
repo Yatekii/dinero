@@ -87,7 +87,7 @@ async fn serve() -> anyhow::Result<()> {
         .with_state(AppState::new()?)
         .layer(
             CorsLayer::new()
-                .allow_origin(AllowOrigin::predicate(move |origin, _parts| {
+                .allow_origin(AllowOrigin::predicate(move |_origin, _parts| {
                     // if let Ok(origin) = origin.to_str() {
                     //     origin.contains("127.0.0.1")
                     //         || origin.contains("localhost")
