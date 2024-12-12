@@ -83,6 +83,7 @@ export default function NetWorth({
         yAxisLabel="Net Worth"
         customTooltip={Tooltip}
         minValue={0}
+        tickGap={50}
       />
     </>
   );

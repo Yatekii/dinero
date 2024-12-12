@@ -66,7 +66,9 @@ export function SpendBreakdownTransactions({
         onValueChange={(v) => setLedger(ledgers.find((l) => l.id == v))}
       >
         {ledgers.map((l) => (
-          <SearchSelectItem value={l.id}>{l.name}</SearchSelectItem>
+          <SearchSelectItem key={l.id} value={l.id}>
+            {l.name}
+          </SearchSelectItem>
         ))}
       </SearchSelect>
       {data && (
