@@ -51,13 +51,6 @@ pub async fn handler(
         min_date = min_date.min(min);
     }
 
-    // Take 3 years worth of data.
-    const NUM_SAMPLES: u64 = 3 * 365;
-
-    if min_date.checked_add_days(Days::new(NUM_SAMPLES)) < Some(max_date) {
-        min_date = max_date.checked_sub_days(Days::new(NUM_SAMPLES)).unwrap();
-    }
-
     let dates = (min_date.iter_days().take_while(|d| d <= &max_date)).collect::<Vec<_>>();
 
     let mut ledgers = HashMap::new();
@@ -103,13 +96,15 @@ pub async fn handler(
         );
     }
 
+    const NUM_SAMPLES: usize = 3 * 365;
+
     let mut balances = Vec::new();
     let mut total = ledgers
         .iter()
         .next()
         .map(|v| v.1 .2.clone())
         .unwrap_or_default();
-    for (i, (id, (name, currency, transactions))) in ledgers.into_iter().enumerate() {
+    for (i, (id, (name, currency, mut transactions))) in ledgers.into_iter().enumerate() {
         if i != 0 {
             total = total
                 .iter()
@@ -117,11 +112,15 @@ pub async fn handler(
                 .map(|(a, b)| a + b)
                 .collect();
         }
+        // Take 3 years worth of data.
+
         balances.push(PortfolioLedgerData {
             id,
             name,
             currency,
-            series: transactions,
+            series: transactions
+                .drain(transactions.len() - NUM_SAMPLES..)
+                .collect(),
         });
     }
 
@@ -178,11 +177,13 @@ pub async fn handler(
         }
     }
 
+    let dates_len = dates.len();
     Ok(Json(PortfolioSummaryResponse {
         total_balance: PortfolioLedgersData {
             balances,
             timestamps: dates
                 .into_iter()
+                .skip(dates_len - NUM_SAMPLES)
                 .map(|v| v.and_time(NaiveTime::default()).and_utc().timestamp())
                 .collect(),
         },
