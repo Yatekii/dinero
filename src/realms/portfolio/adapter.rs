@@ -65,7 +65,6 @@ impl Adapter for Production {
                         id: ledger.id.clone(),
                         owner: ledger.owner.clone(),
                         name: ledger.name.clone(),
-                        currency: ledger.currency,
                         format: ledger.format,
                         initial_balance: ledger.initial_balance,
                         initial_date: ledger.initial_date,
@@ -121,7 +120,6 @@ impl Adapter for Production {
                     id: id.clone(),
                     owner: account.owner.clone(),
                     name: account.name.clone(),
-                    currency: account.currency,
                     format: account.format,
                     ledgers: ledgers
                         .into_iter()
@@ -216,10 +214,9 @@ impl Adapter for Production {
         mut portfolio: Portfolio,
         account: CreateLedgerRequest,
     ) -> Result<String> {
-        let id = slug::slugify(format!("{}-{}", &account.name, &account.currency));
+        let id = slug::slugify(&account.name);
         let CreateLedgerRequest {
             name,
-            currency,
             format,
             initial_balance,
             initial_date,
@@ -245,7 +242,6 @@ impl Adapter for Production {
                 id: id.clone(),
                 owner,
                 name,
-                currency,
                 format,
                 initial_balance,
                 initial_date,
@@ -264,11 +260,10 @@ impl Adapter for Production {
         id: String,
         account: UpdateLedgerRequest,
     ) -> Result<String> {
-        let new_id = slug::slugify(format!("{}-{}", &account.name, &account.currency));
+        let new_id = slug::slugify(&account.name);
         let owner = &portfolio.owner;
         let UpdateLedgerRequest {
             name,
-            currency,
             format,
             initial_balance,
             initial_date,
@@ -288,7 +283,6 @@ impl Adapter for Production {
                 id: new_id.clone(),
                 owner: owner.clone(),
                 name,
-                currency,
                 format,
                 initial_balance,
                 initial_date,

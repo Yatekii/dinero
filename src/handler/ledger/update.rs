@@ -7,10 +7,7 @@ use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{
-    cli::BankFormat, error::AppError, fx::Currency, handler::auth::user::User,
-    state::PortfolioAdapter,
-};
+use crate::{cli::BankFormat, error::AppError, handler::auth::user::User, state::PortfolioAdapter};
 
 #[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
@@ -34,7 +31,6 @@ pub struct UpdateLedgerRequest {
     #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,
     pub name: String,
-    pub currency: Currency,
     pub spending: bool,
 }
 

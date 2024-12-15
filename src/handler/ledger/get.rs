@@ -45,7 +45,6 @@ pub async fn handler(
         id: account.id.clone(),
         owner: user.sub,
         name: account.name.clone(),
-        currency: account.currency,
         format: account.format,
         ledgers,
         initial_balance: account.initial_balance,

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use anyhow::bail;
+use anyhow::{bail, Context};
 use axum::{debug_handler, extract::State, Json};
 use chrono::{Datelike, Days, NaiveDate, NaiveTime, Utc};
 use itertools::Itertools;
@@ -25,7 +25,7 @@ pub async fn handler(
     let portfolio = user.portfolio(adapter)?;
 
     if portfolio.accounts.is_empty() {
-        return Ok(Json(PortfolioSummaryResponse::new(portfolio.base_currency)));
+        return Ok(Json(PortfolioSummaryResponse::new()));
     }
 
     let dates = get_date_series(&portfolio.accounts);
@@ -37,6 +37,16 @@ pub async fn handler(
     for account in portfolio.accounts.values() {
         let mut ledger_balances = HashMap::<Symbol, Vec<_>>::new();
 
+        // TODO: Handle multiple account currencies.
+        // Currently if e.g. revolut accounts would have stocks and multiple currency accounts
+        // It would fail to properly value the bought stock because it choses one of ledger currencies
+        // randomly for the conversion.
+        let account_currency = account
+            .ledgers
+            .iter()
+            .find_map(|l| (l.kind == LedgerKind::Bank).then(|| l.symbol.currency()))
+            .with_context(|| "No ledger currency was found for this ledger")?;
+
         for ledger in &account.ledgers {
             let mut ledger_worth_on_date = 0.0;
             // If Some this contains the base currency rates against the ticker.
@@ -44,13 +54,13 @@ pub async fn handler(
             let mut ticker_to_base = None;
             // We need to get the ticker_to_base_rates.
             let needs_ticker_to_base_transform =
-                ledger.kind == LedgerKind::Stock && account.currency != portfolio.base_currency;
+                ledger.kind == LedgerKind::Stock && account_currency != portfolio.base_currency;
             let rates = if ledger.symbol != portfolio.base_currency {
                 if needs_ticker_to_base_transform {
                     ticker_to_base = Some(
                         fetch_rate(
                             cache.clone(),
-                            &Symbol::Currency(account.currency),
+                            &Symbol::Currency(account_currency),
                             portfolio.base_currency,
                         )
                         .await?,
@@ -94,15 +104,12 @@ pub async fn handler(
             }
         }
 
-        accounts.insert(
-            account.id.clone(),
-            (account.name.clone(), account.currency, account_balances),
-        );
+        accounts.insert(account.id.clone(), (account.name.clone(), account_balances));
     }
 
     let mut balances = Vec::new();
     let mut total = vec![0.0; dates_len];
-    for (id, (name, currency, mut transactions)) in accounts.into_iter() {
+    for (id, (name, mut transactions)) in accounts.into_iter() {
         for (total, b) in total.iter_mut().zip(transactions.iter()) {
             *total += b;
         }
@@ -111,7 +118,6 @@ pub async fn handler(
         balances.push(PortfolioLedgerData {
             id,
             name,
-            currency,
             series: transactions.drain(samples_to_skip..).collect(),
         });
     }
@@ -134,7 +140,6 @@ pub async fn handler(
     let total_prediction = PortfolioLedgerData {
         id: "total-prediction".to_string(),
         name: "Prediction of the total".to_string(),
-        currency: portfolio.base_currency,
         series: (0..365).map(|x| m * ((x + TAKE) as f64) + q).collect(),
     };
 
@@ -223,7 +228,6 @@ fn get_date_series(accounts: &HashMap<String, Account>) -> Vec<NaiveDate> {
 pub struct PortfolioLedgerData {
     pub id: String,
     pub name: String,
-    pub currency: Currency,
     pub series: Vec<f64>,
 }
 
@@ -251,7 +255,7 @@ pub struct PortfolioSummaryResponse {
 }
 
 impl PortfolioSummaryResponse {
-    pub fn new(currency: Currency) -> Self {
+    pub fn new() -> Self {
         Self {
             total_balance: PortfolioLedgersData {
                 balances: vec![],
@@ -260,7 +264,6 @@ impl PortfolioSummaryResponse {
             total_prediction: PortfolioLedgerData {
                 id: "total-prediction".to_string(),
                 name: "Prediction of the total".to_string(),
-                currency,
                 series: vec![],
             },
             spend_per_month: SpendPerMonth {

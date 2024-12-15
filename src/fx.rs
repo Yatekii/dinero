@@ -52,6 +52,15 @@ pub enum Symbol {
     Stock(String),
 }
 
+impl Symbol {
+    pub fn currency(&self) -> Currency {
+        match self {
+            Symbol::Currency(c) => *c,
+            Symbol::Stock(s) => panic!("called `Symbol::currency` on a `Stock` value: {s}"),
+        }
+    }
+}
+
 impl Display for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -102,8 +111,9 @@ impl HistoryCache {
         for file in std::fs::read_dir("portfolio/fx")? {
             let file = file?;
             let path = file.path();
-            let file = std::fs::File::open(path)?;
-            let pair: Pair = serde_json::from_reader(file).unwrap();
+            let file = std::fs::File::open(&path)?;
+            let pair: Pair = serde_json::from_reader(file)
+                .with_context(|| format!("{} could not be read", path.display()))?;
             fx.insert((pair.from.clone(), pair.to.clone()), pair);
         }
         Ok(Self { fx })

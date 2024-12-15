@@ -38,7 +38,6 @@ pub struct SerdeAccount {
     /// The OIDC owner
     pub owner: Owner,
     pub name: String,
-    pub currency: Currency,
     pub format: BankFormat,
     pub initial_balance: Option<f64>,
     pub initial_date: Option<NaiveDate>,
@@ -52,7 +51,6 @@ pub struct Account {
     /// The OIDC owner
     pub owner: Owner,
     pub name: String,
-    pub currency: Currency,
     pub format: BankFormat,
     pub ledgers: Vec<ExtendedLedger>,
     pub initial_balance: Option<f64>,

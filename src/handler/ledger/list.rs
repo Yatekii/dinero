@@ -2,7 +2,7 @@ use axum::{debug_handler, extract::State, Json};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{error::AppError, fx::Currency, handler::auth::user::User, state::PortfolioAdapter};
+use crate::{error::AppError, handler::auth::user::User, state::PortfolioAdapter};
 
 #[debug_handler(state = crate::state::AppState)]
 pub async fn handler(
@@ -17,7 +17,6 @@ pub async fn handler(
             .map(|(id, ledger)| LedgerMeta {
                 id: id.clone(),
                 name: ledger.name.clone(),
-                currency: ledger.currency,
             })
             .collect(),
     }))
@@ -34,5 +33,4 @@ pub struct ListLedgerResponse {
 pub struct LedgerMeta {
     pub name: String,
     pub id: String,
-    pub currency: Currency,
 }

@@ -3,7 +3,6 @@ use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::fx::Currency;
 use crate::handler::auth::user::User;
 use crate::state::PortfolioAdapter;
 use crate::{cli::BankFormat, error::AppError};
@@ -28,7 +27,6 @@ pub struct CreateLedgerRequest {
     #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,
     pub name: String,
-    pub currency: Currency,
     pub spending: bool,
 }
 
