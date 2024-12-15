@@ -1,20 +1,24 @@
-use std::io::Cursor;
+use std::{io::Cursor, str::FromStr};
 
 use chrono::{NaiveDate, NaiveTime};
 use csv::ReaderBuilder;
 
-use super::{LedgerRecord, ParsedAccount, ParsedLedger, Parser};
+use crate::fx::{Currency, Symbol};
+
+use super::{Ledger, LedgerKind, LedgerRecord, ParsedAccount, Parser};
 
 pub struct Ubs {}
 
 impl Parser for Ubs {
     fn parse(name: &str, content: String) -> anyhow::Result<ParsedAccount> {
+        let mut currency = Currency::CHF;
         let records = ReaderBuilder::new()
             .delimiter(b';')
             .from_reader(Cursor::new(&content))
             .deserialize::<Record>()
             .map(|v| {
                 v.map(|v| {
+                    currency = Currency::from_str(&v.currency).unwrap();
                     v.booking_date.map(|date| LedgerRecord {
                         date,
                         amount: v
@@ -26,7 +30,6 @@ impl Parser for Ubs {
                             .unwrap(),
                         description: v.description_1.unwrap_or_default(),
                         category: "".to_string(),
-                        symbol: "CHF".to_string(),
                     })
                 })
             })
@@ -34,9 +37,11 @@ impl Parser for Ubs {
             .collect::<Result<_, _>>()?;
 
         Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger {
+            ledgers: vec![Ledger {
                 name: name.to_string(),
                 records,
+                symbol: Symbol::Currency(currency),
+                kind: LedgerKind::Bank,
             }],
         })
     }
@@ -53,7 +58,7 @@ struct Record {
     #[serde(rename = "Value date")]
     _value_date: Option<NaiveDate>,
     #[serde(rename = "Currency")]
-    _currency: Option<String>,
+    currency: String,
     #[serde(rename = "Debit")]
     debit: Option<String>,
     #[serde(rename = "Credit")]

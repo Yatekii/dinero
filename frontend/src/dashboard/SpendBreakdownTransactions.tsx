@@ -84,17 +84,30 @@ export function SpendBreakdownTransactions({
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.records.map((item, i) => (
-              <TableRow key={i}>
-                <TableCell className="text-right">
-                  {new Date(item.date).toDateString()}
-                </TableCell>
-                <TableCell className="text-right">
-                  {item.amount?.toFixed(2)}
-                </TableCell>
-                <TableCell className="text-right">{item.description}</TableCell>
-                <TableCell className="text-right">{item.category}</TableCell>
-              </TableRow>
+            {data.ledgers.map((ledger) => (
+              <>
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <h1 className="text-4xl">{ledger.symbol}</h1>
+                  </TableCell>
+                </TableRow>
+                {ledger.records.map((item, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-right">
+                      {new Date(item.date).toDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.amount?.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.description}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.category}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </>
             ))}
           </TableBody>
         </Table>

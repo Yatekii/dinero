@@ -3,7 +3,7 @@ use std::io::Cursor;
 use chrono::NaiveDate;
 use csv::ReaderBuilder;
 
-use super::{LedgerRecord, ParsedAccount, ParsedLedger, Parser};
+use super::{Ledger, LedgerKind, LedgerRecord, ParsedAccount, Parser};
 
 pub struct Neon {}
 
@@ -20,15 +20,16 @@ impl Parser for Neon {
                     amount: v.amount,
                     description: v.description,
                     category: v.category,
-                    symbol: "CHF".to_string(),
                 })
             })
             .collect::<Result<_, _>>()?;
 
         Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger {
+            ledgers: vec![Ledger {
                 name: name.to_string(),
                 records,
+                symbol: crate::fx::Symbol::Currency(crate::fx::Currency::CHF),
+                kind: LedgerKind::Bank,
             }],
         })
     }

@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail, Context, Ok, Result};
 use axum::async_trait;
 
 use crate::{
-    banks::{load, LedgerRecord},
+    banks::{load, ExtendedLedger, Ledger},
     handler::ledger::{create::CreateLedgerRequest, update::UpdateLedgerRequest},
     processing::process,
 };
@@ -33,7 +33,7 @@ pub trait Adapter: Send + Sync {
     ) -> Result<String>;
     async fn delete_ledger(&self, portfolio: Portfolio, id: &str) -> Result<()>;
     fn list_files(&self, owner: &Owner) -> Result<HashMap<String, Vec<PathBuf>>>;
-    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<LedgerRecord>>;
+    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<Ledger>>;
     fn add_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
     fn update_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
     fn delete_file(&self, owner: &Owner, id: &str, name: &str) -> Result<()>;
@@ -86,14 +86,8 @@ impl Adapter for Production {
             .path
             .join(Self::PORTFOLIO_LEDGER_DIR)
             .join(&portfolio.owner);
-        std::fs::create_dir_all(&path)?;
-        // TODO:
-        // for (id, ledger) in &portfolio.accounts {
-        //     // let mut file = std::fs::File::create(path.join(format!("{}.parquet", id)))?;
-        //     // let mut df = ledger.ledgers.clone();
-        //     // ParquetWriter::new(&mut file).finish(&mut df)?;
-        // }
-        Ok(())
+        std::fs::create_dir_all(&path)
+            .with_context(|| format!("Could not create dir {}", path.display()))
     }
 
     fn load(&self, owner: Owner) -> Result<Portfolio> {
@@ -101,35 +95,55 @@ impl Adapter for Production {
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
 
         let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&owner);
-        let accounts = portfolio
-            .accounts
-            .into_iter()
-            .map(|(id, account)| {
-                let path = path.join(account.id);
-                let mut data = vec![];
-                for entry in std::fs::read_dir(&path)
-                    .with_context(|| anyhow!("could not open dir {}", path.display()))?
-                {
-                    let entry = entry?;
-                    let path = entry.path();
-                    data.extend(load(&id, path, account.format)?);
+        let mut accounts = HashMap::new();
+        for (id, account) in portfolio.accounts.into_iter() {
+            let path = path.join(account.id);
+            let mut ledgers = Vec::<Ledger>::new();
+            let dir_entries = std::fs::read_dir(&path)
+                .with_context(|| anyhow!("could not open dir {}", path.display()))?;
+            for entry in dir_entries {
+                let path = entry?.path();
+                let loaded_ledgers = load(&id, path, account.format)?;
+                for ledger in loaded_ledgers {
+                    if let Some(found_ledger) =
+                        ledgers.iter_mut().find(|l| l.symbol == ledger.symbol)
+                    {
+                        found_ledger.records.extend(ledger.records);
+                    } else {
+                        ledgers.push(ledger);
+                    }
                 }
-                Ok((
-                    id.clone(),
-                    Account {
-                        id,
-                        owner: account.owner,
-                        name: account.name,
-                        currency: account.currency,
-                        format: account.format,
-                        records: process(data, account.initial_balance, account.initial_date)?,
-                        initial_balance: account.initial_balance,
-                        initial_date: account.initial_date,
-                        spending: account.spending,
-                    },
-                ))
-            })
-            .collect::<Result<HashMap<_, _>>>()?;
+            }
+
+            accounts.insert(
+                id.clone(),
+                Account {
+                    id: id.clone(),
+                    owner: account.owner.clone(),
+                    name: account.name.clone(),
+                    currency: account.currency,
+                    format: account.format,
+                    ledgers: ledgers
+                        .into_iter()
+                        .map(|ledger| {
+                            Ok(ExtendedLedger {
+                                records: process(
+                                    ledger.records,
+                                    account.initial_balance,
+                                    account.initial_date,
+                                )?,
+                                name: ledger.name,
+                                symbol: ledger.symbol,
+                                kind: ledger.kind,
+                            })
+                        })
+                        .collect::<Result<Vec<_>>>()?,
+                    initial_balance: account.initial_balance,
+                    initial_date: account.initial_date,
+                    spending: account.spending,
+                },
+            );
+        }
 
         Ok(Portfolio {
             base_currency: portfolio.base_currency,
@@ -164,7 +178,7 @@ impl Adapter for Production {
         Ok(lists)
     }
 
-    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<LedgerRecord>> {
+    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<Ledger>> {
         let file = File::open(self.path.join(Self::PORTFOLIO_FILE_NAME))?;
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
 
@@ -236,7 +250,7 @@ impl Adapter for Production {
                 initial_balance,
                 initial_date,
                 spending,
-                records: vec![],
+                ledgers: vec![],
             },
         );
         self.store(&portfolio)?;
@@ -279,7 +293,7 @@ impl Adapter for Production {
                 initial_balance,
                 initial_date,
                 spending,
-                records: vec![],
+                ledgers: vec![],
             },
         );
         if new_id != id {
@@ -350,7 +364,7 @@ impl Adapter for Test {
         Ok(Default::default())
     }
 
-    fn load_file(&self, _owner: &Owner, _id: &str, _path: &Path) -> Result<Vec<LedgerRecord>> {
+    fn load_file(&self, _owner: &Owner, _id: &str, _path: &Path) -> Result<Vec<Ledger>> {
         Ok(Default::default())
     }
 

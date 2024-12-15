@@ -21,7 +21,10 @@ pub async fn handler(
     let portfolio = user.portfolio(adapter)?;
     let mut spending = HashMap::new();
     for (id, account) in &portfolio.accounts {
-        let categories = account.records.clone();
+        let mut categories = vec![];
+        for ledger in &account.ledgers {
+            categories.extend(&ledger.records);
+        }
 
         let categories = if let Some(from) = &date_range.from {
             let from =

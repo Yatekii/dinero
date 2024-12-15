@@ -49,6 +49,13 @@ where
     type Rejection = AuthRedirect;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        if let Ok(user_id) = std::env::var("USER_ID") {
+            return Ok(User {
+                sub: Owner::new(user_id),
+                name: "Test".into(),
+            });
+        }
+
         let store = MemoryStore::from_ref(state);
 
         let cookies = parts

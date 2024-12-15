@@ -16,7 +16,6 @@ pub fn process(
             original_description: v.description,
             category: v.category.clone(),
             original_category: v.category,
-            symbol: "".to_string(),
             comments: "".to_string(),
             checked: false,
         })
@@ -33,7 +32,6 @@ pub fn process(
                 original_description: initial_description.to_string(),
                 category: initial_category.to_string(),
                 original_category: initial_category.to_string(),
-                symbol: "".to_string(),
                 comments: "".to_string(),
                 checked: false,
             };

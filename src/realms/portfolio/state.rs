@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use time::macros::format_description;
 use ts_rs::TS;
 
-use crate::{banks::ExtendedLedgerRecord, cli::BankFormat, fx::Currency};
+use crate::{banks::ExtendedLedger, cli::BankFormat, fx::Currency};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Portfolio {
@@ -54,7 +54,7 @@ pub struct Account {
     pub name: String,
     pub currency: Currency,
     pub format: BankFormat,
-    pub records: Vec<ExtendedLedgerRecord>,
+    pub ledgers: Vec<ExtendedLedger>,
     pub initial_balance: Option<f64>,
     #[ts(type = "number")]
     pub initial_date: Option<NaiveDate>,
@@ -96,6 +96,12 @@ pub enum Action {
 #[ts(export)]
 #[serde(transparent)]
 pub struct Owner(String);
+
+impl Owner {
+    pub fn new(subject: String) -> Self {
+        Owner(subject)
+    }
+}
 
 impl Deref for Owner {
     type Target = str;

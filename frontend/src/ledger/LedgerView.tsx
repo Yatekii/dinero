@@ -31,6 +31,10 @@ export async function ledgerLoader({ params }: { params: Params }) {
     data = (await response.json()) as Account;
   }
 
+  data?.ledgers.sort(
+    (a, b) => b.kind.localeCompare(a.kind) || a.symbol.localeCompare(b.symbol)
+  );
+
   return { ledgers, currentLedger: data };
 }
 
@@ -49,30 +53,37 @@ export function Ledger() {
 
   return (
     <>
-      <Table className="mt-5">
-        <TableHead>
-          <TableRow>
-            <TableHeaderCell className="text-right">Date</TableHeaderCell>
-            <TableHeaderCell className="text-right">Amount</TableHeaderCell>
-            <TableHeaderCell className="text-right">
-              Description
-            </TableHeaderCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {currentLedger.records.map((item, i) => (
-            <TableRow key={i}>
-              <TableCell className="text-right">
-                {new Date(item.date).toDateString()}
-              </TableCell>
-              <TableCell className="text-right">
-                {item.amount.toFixed(2)}
-              </TableCell>
-              <TableCell className="text-right">{item.description}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {currentLedger.ledgers.map((ledger) => (
+        <div key={ledger.symbol} className="mt-5 mx-3">
+          <h1 className="text-4xl text-white">{ledger.symbol}</h1>
+          <Table className="w-full mt-5">
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell className="text-right">
+                  Description
+                </TableHeaderCell>
+                <TableHeaderCell className="text-right">Date</TableHeaderCell>
+                <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {ledger.records.map((item, i) => (
+                <TableRow key={i}>
+                  <TableCell className="text-right">
+                    {item.description}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {new Date(item.date).toDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {item.amount.toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ))}
     </>
   );
 }

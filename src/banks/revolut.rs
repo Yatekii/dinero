@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, str::FromStr};
 
 use chrono::{
     format::{parse, Fixed, Item, Numeric, Pad, Parsed},
@@ -7,12 +7,15 @@ use chrono::{
 use csv::ReaderBuilder;
 use serde::{de::Visitor, Deserializer};
 
-use super::{LedgerRecord, ParsedAccount, ParsedLedger, Parser};
+use crate::fx::Currency;
+
+use super::{Ledger, LedgerKind, LedgerRecord, ParsedAccount, Parser};
 
 pub struct Revolut {}
 
 impl Parser for Revolut {
     fn parse(name: &str, content: String) -> anyhow::Result<ParsedAccount> {
+        let mut currency = Currency::CHF;
         let records = ReaderBuilder::new()
             .delimiter(b',')
             .from_reader(Cursor::new(&content))
@@ -20,12 +23,12 @@ impl Parser for Revolut {
             .filter(|v| (v.as_ref()).map_or("", |v| &v.state) == "COMPLETED")
             .filter_map(|v| {
                 v.map(|v| {
+                    currency = Currency::from_str(&v.currency).unwrap();
                     v.date.map(|date| LedgerRecord {
                         date,
                         amount: v.amount,
                         description: v.description,
                         category: v.category,
-                        symbol: v.currency,
                     })
                 })
                 .transpose()
@@ -33,9 +36,11 @@ impl Parser for Revolut {
             .collect::<Result<_, _>>()?;
 
         Ok(ParsedAccount {
-            ledgers: vec![ParsedLedger {
+            ledgers: vec![Ledger {
                 name: name.to_string(),
                 records,
+                symbol: crate::fx::Symbol::Currency(currency),
+                kind: LedgerKind::Bank,
             }],
         })
     }

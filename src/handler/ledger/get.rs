@@ -7,8 +7,8 @@ use axum::{
 use chrono::NaiveDate;
 
 use crate::{
-    banks::ExtendedLedgerRecord, error::AppError, handler::auth::user::User,
-    realms::portfolio::state::Account, state::PortfolioAdapter,
+    error::AppError, handler::auth::user::User, realms::portfolio::state::Account,
+    state::PortfolioAdapter,
 };
 
 #[debug_handler(state = crate::state::AppState)]
@@ -28,16 +28,17 @@ pub async fn handler(
         return Err(anyhow!("Not authorized!"))?;
     }
 
-    let mut transactions: Vec<ExtendedLedgerRecord> = account.records.clone();
+    let mut ledgers = account.ledgers.clone();
+    for ledger in &mut ledgers {
+        if let Some(from) = &filter.from {
+            let from = NaiveDate::parse_from_str(from, "%Y-%m-%d")?;
+            ledger.records.retain(|v| v.date >= from);
+        }
 
-    if let Some(from) = filter.from {
-        let from = NaiveDate::parse_from_str(&from, "%Y-%m-%d")?;
-        transactions.retain(|v| v.date >= from);
-    }
-
-    if let Some(to) = filter.to {
-        let to = NaiveDate::parse_from_str(&to, "%Y-%m-%d")?;
-        transactions.retain(|v| v.date <= to);
+        if let Some(to) = &filter.to {
+            let to = NaiveDate::parse_from_str(to, "%Y-%m-%d")?;
+            ledger.records.retain(|v| v.date <= to);
+        }
     }
 
     let account = Account {
@@ -46,7 +47,7 @@ pub async fn handler(
         name: account.name.clone(),
         currency: account.currency,
         format: account.format,
-        records: transactions,
+        ledgers,
         initial_balance: account.initial_balance,
         initial_date: account.initial_date,
         spending: account.spending,

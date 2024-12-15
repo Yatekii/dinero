@@ -2,14 +2,15 @@ use std::collections::{BTreeMap, HashMap};
 
 use anyhow::bail;
 use axum::{debug_handler, extract::State, Json};
-use chrono::{Datelike, Days, NaiveDate, NaiveTime};
+use chrono::{Datelike, Days, NaiveDate, NaiveTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::{
+    banks::LedgerKind,
     error::AppError,
-    fx::Currency,
+    fx::{Currency, Symbol},
     handler::auth::user::User,
     realms::portfolio::state::Account,
     state::{CacheState, PortfolioAdapter},
@@ -24,103 +25,94 @@ pub async fn handler(
     let portfolio = user.portfolio(adapter)?;
 
     if portfolio.accounts.is_empty() {
-        return Ok(Json(PortfolioSummaryResponse {
-            total_balance: PortfolioLedgersData {
-                balances: vec![],
-                timestamps: vec![],
-            },
-            total_prediction: PortfolioLedgerData {
-                id: "total-prediction".to_string(),
-                name: "Prediction of the total".to_string(),
-                currency: portfolio.base_currency,
-                series: vec![],
-            },
-            spend_per_month: SpendPerMonth {
-                months: HashMap::new(),
-            },
-        }));
+        return Ok(Json(PortfolioSummaryResponse::new(portfolio.base_currency)));
     }
 
-    let mut max_date = NaiveDate::MIN;
-    let mut min_date = NaiveDate::MAX;
-    for ledger in portfolio.accounts.values() {
-        let max = ledger.records.iter().map(|v| v.date).max().unwrap();
-        let min = ledger.records.iter().map(|v| v.date).min().unwrap();
+    let dates = get_date_series(&portfolio.accounts);
+    const NUM_SAMPLES: usize = 3 * 365;
+    let dates_len = dates.len();
+    let samples_to_skip = dates_len.saturating_sub(NUM_SAMPLES);
 
-        max_date = max_date.max(max);
-        min_date = min_date.min(min);
-    }
+    let mut accounts = HashMap::new();
+    for account in portfolio.accounts.values() {
+        let mut ledger_balances = HashMap::<Symbol, Vec<_>>::new();
 
-    let dates = (min_date.iter_days().take_while(|d| d <= &max_date)).collect::<Vec<_>>();
+        for ledger in &account.ledgers {
+            let mut ledger_worth_on_date = 0.0;
+            // If Some this contains the base currency rates against the ticker.
+            // This is None if the ticker is traded against the base currency.
+            let mut ticker_to_base = None;
+            // We need to get the ticker_to_base_rates.
+            let needs_ticker_to_base_transform =
+                ledger.kind == LedgerKind::Stock && account.currency != portfolio.base_currency;
+            let rates = if ledger.symbol != portfolio.base_currency {
+                if needs_ticker_to_base_transform {
+                    ticker_to_base = Some(
+                        fetch_rate(
+                            cache.clone(),
+                            &Symbol::Currency(account.currency),
+                            portfolio.base_currency,
+                        )
+                        .await?,
+                    );
+                }
+                Some(fetch_rate(cache.clone(), &ledger.symbol, portfolio.base_currency).await?)
+            } else {
+                None
+            };
+            for date in &dates {
+                let sum_on_date = ledger
+                    .records
+                    .iter()
+                    .filter(|v| &v.date == date)
+                    .map(|v| v.amount)
+                    .sum::<f64>();
 
-    let mut ledgers = HashMap::new();
-    for ledger in portfolio.accounts.values() {
-        let rates = if ledger.currency != portfolio.base_currency {
-            fetch_rate(cache.clone(), ledger, portfolio.base_currency).await?
-        } else {
-            BTreeMap::new()
-        };
-        let mut balances = Vec::with_capacity(ledger.records.len());
-        let mut total = 0.0;
-        for date in &dates {
-            let sum = ledger
-                .records
-                .iter()
-                .filter(|v| &v.date == date)
-                .map(|v| v.amount)
-                .sum::<f64>();
-
-            let rate = if ledger.currency != portfolio.base_currency {
-                if sum != 0.0 {
-                    *rates
-                        .get(date)
-                        .or_else(|| rates.get(&date.checked_sub_days(Days::new(1)).unwrap()))
-                        .or_else(|| rates.get(&date.checked_sub_days(Days::new(2)).unwrap()))
-                        .unwrap()
+                let rate_currency = ticker_to_base
+                    .as_ref()
+                    .map_or(1.0, |ttb| rate_for_date(ttb, date));
+                let rate = if let Some(rates) = &rates {
+                    rate_for_date(rates, date)
                 } else {
                     1.0
-                }
-            } else {
-                1.0
-            };
+                };
 
-            total += sum;
-            let amount = total * rate;
+                ledger_worth_on_date += sum_on_date;
+                let amount = ledger_worth_on_date * rate * rate_currency;
 
-            balances.push(amount);
+                ledger_balances
+                    .entry(ledger.symbol.clone())
+                    .or_default()
+                    .push(amount);
+            }
         }
 
-        ledgers.insert(
-            ledger.id.clone(),
-            (ledger.name.clone(), ledger.currency, balances),
+        let mut account_balances = vec![0.0; dates.len()];
+        for b in ledger_balances.into_values() {
+            for (t, b) in account_balances.iter_mut().zip(b) {
+                *t += b;
+            }
+        }
+
+        accounts.insert(
+            account.id.clone(),
+            (account.name.clone(), account.currency, account_balances),
         );
     }
 
-    const NUM_SAMPLES: usize = 3 * 365;
-
     let mut balances = Vec::new();
-    let mut total = ledgers
-        .iter()
-        .next()
-        .map(|v| v.1 .2.clone())
-        .unwrap_or_default();
-    for (i, (id, (name, currency, mut transactions))) in ledgers.into_iter().enumerate() {
-        if i != 0 {
-            total = total
-                .iter()
-                .zip(transactions.iter())
-                .map(|(a, b)| a + b)
-                .collect();
+    let mut total = vec![0.0; dates_len];
+    for (id, (name, currency, mut transactions)) in accounts.into_iter() {
+        for (total, b) in total.iter_mut().zip(transactions.iter()) {
+            *total += b;
         }
-        // Take 3 years worth of data.
 
+        // Take 3 years worth of data.
         balances.push(PortfolioLedgerData {
             id,
             name,
             currency,
-            series: transactions
-                .drain(transactions.len() - NUM_SAMPLES..)
-                .collect(),
+            series: transactions.drain(samples_to_skip..).collect(),
         });
     }
 
@@ -147,49 +139,83 @@ pub async fn handler(
     };
 
     let mut data = HashMap::new();
-    for ledger in portfolio.accounts.values().filter(|a| a.spending) {
-        let mut transactions = ledger.records.clone();
-        for transaction in &mut transactions {
-            let rate = if ledger.currency != portfolio.base_currency {
-                let rates = fetch_rate(cache.clone(), ledger, portfolio.base_currency).await?;
-                rates[&transaction.date]
-            } else {
-                1.0
-            };
-            transaction.amount *= rate;
-        }
+    for account in portfolio.accounts.values().filter(|a| a.spending) {
+        for ledger in &account.ledgers {
+            let mut transactions = ledger.records.clone();
+            for transaction in &mut transactions {
+                let rate = if ledger.symbol != Symbol::Currency(portfolio.base_currency) {
+                    let rates =
+                        fetch_rate(cache.clone(), &ledger.symbol, portfolio.base_currency).await?;
+                    rates[&transaction.date]
+                } else {
+                    1.0
+                };
+                transaction.amount *= rate;
+            }
 
-        let categories = transactions
-            .iter()
-            .filter(|v| v.amount < 0.0)
-            .sorted_by_key(|v| (v.date.year(), v.date.month(), v.category.clone()))
-            .group_by(|v| (v.date.year(), v.date.month(), v.category.clone()))
-            .into_iter()
-            .map(|(g, v)| (g.clone(), v.into_iter().map(|v| v.amount).sum::<f64>()))
-            .collect::<HashMap<_, _>>();
+            let categories = transactions
+                .iter()
+                .filter(|v| v.amount < 0.0)
+                .sorted_by_key(|v| (v.date.year(), v.date.month(), v.category.clone()))
+                .group_by(|v| (v.date.year(), v.date.month(), v.category.clone()))
+                .into_iter()
+                .map(|(g, v)| (g.clone(), v.into_iter().map(|v| v.amount).sum::<f64>()))
+                .collect::<HashMap<_, _>>();
 
-        for ((year, month, category), amount) in categories {
-            let amount = -amount;
-            let months = data.entry(month).or_insert(HashMap::new());
-            let categories = months.entry(year).or_insert(HashMap::new());
-            let total = categories.entry(category.clone()).or_insert(0.0);
-            *total += amount;
+            for ((year, month, category), amount) in categories {
+                let amount = -amount;
+                let months = data.entry(month).or_insert(HashMap::new());
+                let categories = months.entry(year).or_insert(HashMap::new());
+                let total = categories.entry(category.clone()).or_insert(0.0);
+                *total += amount;
+            }
         }
     }
 
-    let dates_len = dates.len();
     Ok(Json(PortfolioSummaryResponse {
         total_balance: PortfolioLedgersData {
             balances,
             timestamps: dates
                 .into_iter()
-                .skip(dates_len - NUM_SAMPLES)
+                .skip(samples_to_skip)
                 .map(|v| v.and_time(NaiveTime::default()).and_utc().timestamp())
                 .collect(),
         },
         total_prediction,
         spend_per_month: SpendPerMonth { months: data },
+        base_currency: portfolio.base_currency,
     }))
+}
+
+fn rate_for_date(rates: &BTreeMap<NaiveDate, f64>, date: &NaiveDate) -> f64 {
+    let mut result = None;
+    let mut days = 0;
+    while result.is_none() {
+        let date = date.checked_sub_days(Days::new(days)).unwrap();
+        days += 1;
+        result = rates.get(&date).copied()
+    }
+    result.unwrap_or(1.0)
+}
+
+/// Get all the dates from the oldest found transaction to today.
+fn get_date_series(accounts: &HashMap<String, Account>) -> Vec<NaiveDate> {
+    let max_date = Utc::now().naive_utc().date();
+    let mut min_date = NaiveDate::MAX;
+    for account in accounts.values() {
+        for ledger in &account.ledgers {
+            let min = ledger
+                .records
+                .iter()
+                .map(|v| v.date)
+                .min()
+                .unwrap_or(NaiveDate::MAX);
+
+            min_date = min_date.min(min);
+        }
+    }
+
+    (min_date.iter_days().take_while(|d| d <= &max_date)).collect::<Vec<_>>()
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -221,15 +247,37 @@ pub struct PortfolioSummaryResponse {
     pub total_balance: PortfolioLedgersData,
     pub total_prediction: PortfolioLedgerData,
     pub spend_per_month: SpendPerMonth,
+    pub base_currency: Currency,
+}
+
+impl PortfolioSummaryResponse {
+    pub fn new(currency: Currency) -> Self {
+        Self {
+            total_balance: PortfolioLedgersData {
+                balances: vec![],
+                timestamps: vec![],
+            },
+            total_prediction: PortfolioLedgerData {
+                id: "total-prediction".to_string(),
+                name: "Prediction of the total".to_string(),
+                currency,
+                series: vec![],
+            },
+            spend_per_month: SpendPerMonth {
+                months: HashMap::new(),
+            },
+            base_currency: Currency::CHF,
+        }
+    }
 }
 
 async fn fetch_rate(
     cache: CacheState,
-    ledger: &Account,
+    symbol: &Symbol,
     base_currency: Currency,
 ) -> Result<BTreeMap<NaiveDate, f64>, AppError> {
     let mut cache = cache.lock().await;
-    let rate = cache.get(ledger.currency, base_currency).await?;
+    let rate = cache.get(symbol, &Symbol::Currency(base_currency)).await?;
     Ok(rate.rates.clone())
 }
 

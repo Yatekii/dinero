@@ -1,76 +1,71 @@
 ---
 source: src/banks/neon.rs
-expression: "Neon::parse(\"Neon\".to_string(), TRANSACTIONS.to_string()).unwrap()"
+expression: "Neon::parse(\"Neon\", TRANSACTIONS.to_string()).unwrap()"
 ---
 ParsedAccount {
     ledgers: [
-        ParsedLedger {
+        Ledger {
             name: "Neon",
+            symbol: Currency(
+                CHF,
+            ),
             records: [
                 LedgerRecord {
                     date: 2019-09-17,
                     amount: -1009.0,
                     description: "Urech Optik",
                     category: "health",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-08-02,
                     amount: -200.0,
                     description: "ZKB ZH HB SIHLQUAI 2",
                     category: "cash",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-07-22,
                     amount: -150.0,
                     description: "Hanspeter Schoop",
                     category: "uncategorized",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-07-22,
                     amount: -439.7,
                     description: "Generali",
                     category: "finances",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-07-15,
                     amount: -92.2,
                     description: "Urbach Optik",
                     category: "health",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-06-03,
                     amount: -140.0,
                     description: "Regionalpolizei Lenzburg",
                     category: "finances",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-05-10,
                     amount: 30.0,
                     description: "neon Switzerland AG",
                     category: "income",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-05-10,
                     amount: 30.0,
                     description: "neon Switzerland AG",
                     category: "income",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2019-05-09,
                     amount: 3000.0,
                     description: "Technokrat GmbH",
                     category: "income_salary",
-                    symbol: "CHF",
                 },
             ],
+            kind: Bank,
         },
     ],
 }

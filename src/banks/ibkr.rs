@@ -1,40 +1,91 @@
-use std::io::Cursor;
+use std::{collections::HashMap, io::Cursor};
 
 use anyhow::{bail, Error};
 use chrono::NaiveDate;
 use csv::{Reader, ReaderBuilder};
 
-use super::{LedgerRecord, ParsedAccount, Parser};
+use crate::fx::{Currency, Symbol};
+
+use super::{Ledger, LedgerRecord, ParsedAccount, Parser, StockLedgerRecord};
 
 pub struct Ibkr {}
 
 impl Parser for Ibkr {
     fn parse(name: &str, content: String) -> anyhow::Result<ParsedAccount> {
-        let mut ledgers = vec![];
+        let mut ledgers: Vec<Ledger> = vec![];
+        let mut currency_ledger: Option<Ledger> = None;
         let lines = content.lines().collect::<Vec<_>>();
         let mut end = lines.len();
         let mut header_found = false;
+
+        let currency = Currency::USD;
+
+        // We scan the entire file from the back until we find a HEADER row that tells us what kind of
+        // transactions the transactions following the header are.
         for (index, line) in lines.iter().enumerate().rev() {
             if line.starts_with("\"HEADER\"") {
+                // Acknowledge that we found and entry, so this seems to be a valid IBKR format.
                 header_found = true;
                 let content = &lines[index..end].join("\n");
-
                 let reader = ReaderBuilder::new()
                     .delimiter(b',')
                     .from_reader(Cursor::new(&content));
 
-                let records = if line.contains("\"CTRN\"") {
-                    parse_cash_transactions(reader)?
-                } else if line.contains("\"TRNT\"") {
-                    parse_stock_transactions(reader)?
+                // Extract the cash transactions.
+                if line.contains("\"CTRN\"") {
+                    let records = parse_cash_transactions(reader)?;
+                    if let Some(ledger) = &mut currency_ledger {
+                        ledger.records.extend(records);
+                    } else {
+                        currency_ledger = Some(super::Ledger {
+                            name: name.to_string(),
+                            records,
+                            symbol: Symbol::Currency(currency),
+                            kind: super::LedgerKind::Bank,
+                        });
+                    }
+                }
+                // Extract the trades.
+                else if line.contains("\"TRNT\"") {
+                    let data = parse_stock_transactions(reader)?;
+                    for (symbol, records) in data {
+                        // For each stock transaction we have an entry on the individual symbols ledger
+                        // but also on the main currency ledger because it does not export the stock transactions.
+                        // We need to deduce the amount of {main_currency} we paid for said stock.
+                        let currency_records = records.iter().map(|r| LedgerRecord {
+                            amount: r.amount * -1.0 * r.price,
+                            date: r.date,
+                            description: r.description.clone(),
+                            category: r.category.clone(),
+                        });
+                        if let Some(ledger) = &mut currency_ledger {
+                            ledger.records.extend(currency_records);
+                        } else {
+                            currency_ledger = Some(super::Ledger {
+                                name: name.to_string(),
+                                records: currency_records.collect(),
+                                symbol: Symbol::Currency(currency),
+                                kind: super::LedgerKind::Bank,
+                            });
+                        }
+
+                        // We also need to add each record to the individual stock ledgers of course.
+                        // But here we just add the number of shares, not the price we paid in {main_currency}.
+                        let records = records.into_iter().map(From::from).collect();
+                        if let Some(ledger) = ledgers.iter_mut().find(|l| l.symbol == symbol) {
+                            ledger.records.extend(records);
+                        } else {
+                            ledgers.push(super::Ledger {
+                                name: name.to_string(),
+                                records,
+                                symbol,
+                                kind: super::LedgerKind::Stock,
+                            });
+                        }
+                    }
                 } else {
                     bail!("Unknown export")
                 };
-
-                ledgers.push(super::ParsedLedger {
-                    name: name.to_string(),
-                    records,
-                });
 
                 end = index;
             }
@@ -44,26 +95,34 @@ impl Parser for Ibkr {
             bail!("The data seems to not be in IBKR format as no HEADER lines were found")
         }
 
+        if let Some(ledeger) = currency_ledger {
+            ledgers.push(ledeger);
+        }
+
         Ok(ParsedAccount { ledgers })
     }
 }
 
+/// Gets all the stock purchases in the given reader.
+///
+/// Contains everything a regular transaction contains but also a stock price.
 fn parse_stock_transactions(
     mut reader: Reader<Cursor<&&String>>,
-) -> Result<Vec<LedgerRecord>, Error> {
-    let records = reader
-        .deserialize::<StockRecord>()
-        .map(|v| {
-            v.map(|v| LedgerRecord {
-                date: v.date,
-                amount: v.amount,
-                description: v.description,
-                category: "Broker".to_string(),
-                symbol: v.symbol,
-            })
-        })
-        .collect::<Result<_, _>>()?;
+) -> Result<HashMap<Symbol, Vec<StockLedgerRecord>>, Error> {
+    let mut records = HashMap::new();
+    let data = reader.deserialize::<StockRecord>();
 
+    for record in data.flatten() {
+        let symbol = Symbol::from(record.symbol);
+        let entry = records.entry(symbol).or_insert(vec![]);
+        entry.push(StockLedgerRecord {
+            date: record.date,
+            amount: record.amount,
+            price: record.price,
+            description: record.description,
+            category: "Broker".to_string(),
+        })
+    }
     Ok(records)
 }
 
@@ -73,12 +132,15 @@ struct StockRecord {
     date: NaiveDate,
     #[serde(rename = "Quantity")]
     amount: f64,
+    #[serde(rename = "TradePrice")]
+    price: f64,
     #[serde(rename = "Description")]
     description: String,
     #[serde(rename = "Symbol")]
     symbol: String,
 }
 
+/// Parse all the cash transactions in the given reader.
 fn parse_cash_transactions(
     mut reader: Reader<Cursor<&&String>>,
 ) -> Result<Vec<LedgerRecord>, Error> {
@@ -90,7 +152,6 @@ fn parse_cash_transactions(
                 amount: v.amount,
                 description: v.description,
                 category: "Broker".to_string(),
-                symbol: v.symbol,
             })
         })
         .collect::<Result<_, _>>()?;
@@ -107,6 +168,7 @@ struct CashRecord {
     #[serde(rename = "Description")]
     description: String,
     #[serde(rename = "Symbol")]
+    #[allow(unused)]
     symbol: String,
 }
 
@@ -136,6 +198,6 @@ mod tests {
         expected = "The data seems to not be in IBKR format as no HEADER lines were found"
     )]
     fn parse_fail() {
-        insta::assert_debug_snapshot!(super::Ibkr::parse("IBKR", TRANSACTIONS_BAD.into()).unwrap());
+        super::Ibkr::parse("IBKR", TRANSACTIONS_BAD.into()).unwrap();
     }
 }

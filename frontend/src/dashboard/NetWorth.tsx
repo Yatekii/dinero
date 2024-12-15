@@ -4,6 +4,7 @@ import { AreaChart, TooltipProps } from "../components/AreaChart";
 import { cx } from "../lib/utils";
 import { getColorClassName } from "../lib/chartUtils";
 import { PortfolioLedgerData } from "../bindings/PortfolioLedgerData";
+import { Currency } from "../bindings/Currency";
 
 interface ChartData {
   date: Date;
@@ -13,9 +14,11 @@ interface ChartData {
 export default function NetWorth({
   totalBalance,
   totalPrediction,
+  baseCurrency,
 }: {
   totalBalance: PortfolioLedgersData;
   totalPrediction: PortfolioLedgerData;
+  baseCurrency: Currency;
 }) {
   const data = [] as ChartData[];
 
@@ -55,7 +58,7 @@ export default function NetWorth({
             .map((b) => b.series[b.series.length - 1])
             .reduce((t, v) => t + v)
             .toFixed(0)}{" "}
-          CHF
+          {baseCurrency}
         </Title>
       </div>
       <AreaChart

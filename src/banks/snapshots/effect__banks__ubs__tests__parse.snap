@@ -1,83 +1,77 @@
 ---
 source: src/banks/ubs.rs
-expression: "super::Ubs::parse(\"UBS\".to_string(), TRANSACTIONS.into()).unwrap()"
+expression: "super::Ubs::parse(\"UBS\", TRANSACTIONS.into()).unwrap()"
 ---
 ParsedAccount {
     ledgers: [
-        ParsedLedger {
+        Ledger {
             name: "UBS",
+            symbol: Currency(
+                CHF,
+            ),
             records: [
                 LedgerRecord {
                     date: 2021-01-29,
                     amount: -10.0,
                     description: "Balance closing of service prices",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-28,
                     amount: -503.5,
                     description: "UBS Switzerland AG,c/o UBS Card Center",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-27,
                     amount: -62.75,
                     description: "CAISSE DES MEDECINS,1211 GENEVE",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-22,
                     amount: 9.59,
                     description: "STRIPE PAYMENTS UK LTD,9TH FLOOR, 107 CHEAPSIDE GB - LONDO, N EC2V 6DN",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-22,
                     amount: 3688.0,
                     description: "TECHNOKRAT GMBH,UNTERROHRSTRASSE 5, 8952 SCHLIEREN, CH",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-18,
                     amount: -482.8,
                     description: "CSS KRANKEN-VERSICHERUNG,AG, LUZERN",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-13,
                     amount: -820.0,
                     description: "Stichting DEGIRO,NL",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-13,
                     amount: -20.0,
                     description: "ROTH, JONAS, Debit UBS TWINT",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-04,
                     amount: -350.0,
                     description: "GENERALI PERSONENVERSICHERUNGEN AG,8134 ADLISWIL",
                     category: "",
-                    symbol: "CHF",
                 },
                 LedgerRecord {
                     date: 2021-01-04,
                     amount: -281.35,
                     description: "CSS KRANKEN-VERSICHERUNG,AG, LUZERN",
                     category: "",
-                    symbol: "CHF",
                 },
             ],
+            kind: Bank,
         },
     ],
 }

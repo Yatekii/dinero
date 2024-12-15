@@ -1,9 +1,10 @@
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Display,
+    str::FromStr,
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{Datelike, Days, NaiveDate, NaiveTime, Utc};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,15 @@ pub enum Currency {
     PLN,
 }
 
+impl FromStr for Currency {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        serde_json::from_str(format!("\"{s}\"").as_str())
+            .with_context(|| format!("{s} is not an accepted currency"))
+    }
+}
+
 impl Display for Currency {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -33,9 +43,52 @@ impl Display for Currency {
     }
 }
 
+#[allow(clippy::derived_hash_with_manual_eq)]
+#[derive(Debug, Clone, Eq, Hash, Serialize, Deserialize, TS)]
+#[ts(export)]
+#[serde(untagged)]
+pub enum Symbol {
+    Currency(Currency),
+    Stock(String),
+}
+
+impl Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Symbol::Currency(c) => f.write_fmt(format_args!("{c}")),
+            Symbol::Stock(s) => f.write_str(s),
+        }
+    }
+}
+
+impl PartialEq<Symbol> for Symbol {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Currency(l0), Self::Currency(r0)) => l0 == r0,
+            (Self::Stock(l0), Self::Stock(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq<Currency> for Symbol {
+    fn eq(&self, other: &Currency) -> bool {
+        match self {
+            Self::Currency(c) => c == other,
+            Self::Stock(_) => false,
+        }
+    }
+}
+
+impl<S: AsRef<str>> From<S> for Symbol {
+    fn from(value: S) -> Self {
+        serde_json::from_str(&format!("\"{}\"", value.as_ref())).unwrap()
+    }
+}
+
 #[derive(Debug)]
 pub struct HistoryCache {
-    pub fx: HashMap<(Currency, Currency), Pair>,
+    pub fx: HashMap<(Symbol, Symbol), Pair>,
 }
 
 impl HistoryCache {
@@ -51,12 +104,12 @@ impl HistoryCache {
             let path = file.path();
             let file = std::fs::File::open(path)?;
             let pair: Pair = serde_json::from_reader(file).unwrap();
-            fx.insert((pair.from, pair.to), pair);
+            fx.insert((pair.from.clone(), pair.to.clone()), pair);
         }
         Ok(Self { fx })
     }
 
-    pub async fn get<'a: 'b, 'b>(&'a mut self, from: Currency, to: Currency) -> Result<&'b Pair> {
+    pub async fn get<'a: 'b, 'b>(&'a mut self, from: &Symbol, to: &Symbol) -> Result<&'b Pair> {
         let start = NaiveDate::from_ymd_opt(2016, 1, 1).unwrap();
         let mut end = Utc::now().naive_local().date();
         end = match end.weekday() {
@@ -65,18 +118,20 @@ impl HistoryCache {
             _ => end,
         };
 
-        if self.fx.contains_key(&(from, to)) {
-            let rate = self.fx.get(&(from, to)).unwrap();
+        if self.fx.contains_key(&(from.clone(), to.clone())) {
+            let rate = self.fx.get(&(from.clone(), to.clone())).unwrap();
             let x = rate.rates.last_key_value().map_or(NaiveDate::MIN, |r| *r.0);
             if end <= (x) {
-                Ok(self.fx.get(&(from, to)).unwrap())
+                Ok(self.fx.get(&(from.clone(), to.clone())).unwrap())
             } else {
-                self.update_rates(start, end, from, to).await?;
-                Ok(self.fx.get(&(from, to)).unwrap())
+                self.update_rates(start, end, from.clone(), to.clone())
+                    .await?;
+                Ok(self.fx.get(&(from.clone(), to.clone())).unwrap())
             }
         } else {
-            self.update_rates(start, end, from, to).await?;
-            Ok(self.fx.get(&(from, to)).unwrap())
+            self.update_rates(start, end, from.clone(), to.clone())
+                .await?;
+            Ok(self.fx.get(&(from.clone(), to.clone())).unwrap())
         }
     }
 
@@ -84,10 +139,10 @@ impl HistoryCache {
         &mut self,
         start: NaiveDate,
         end: NaiveDate,
-        from: Currency,
-        to: Currency,
+        from: Symbol,
+        to: Symbol,
     ) -> Result<(), anyhow::Error> {
-        let rate = fetch_rates(start, end, from, to).await?;
+        let rate = fetch_rates(start, end, from.clone(), to.clone()).await?;
         let quotes = rate
             .chart
             .result
@@ -114,8 +169,8 @@ impl HistoryCache {
                     .unwrap()
             });
         let pair = Pair {
-            from,
-            to,
+            from: from.clone(),
+            to: to.clone(),
             dirty: true,
             rates: dates
                 .zip(quotes)
@@ -145,21 +200,25 @@ impl HistoryCache {
 async fn fetch_rates(
     start: NaiveDate,
     end: NaiveDate,
-    from: Currency,
-    to: Currency,
+    from: Symbol,
+    to: Symbol,
 ) -> Result<Rate, anyhow::Error> {
     let interval = "1d";
     let client = reqwest::Client::builder().user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36").build()?;
+    let ticker = match from {
+        Symbol::Currency(c) => format!("{c}{to}=X"),
+        Symbol::Stock(s) => s.to_string(),
+    };
     let response = client
         .get(format!(
-            "https://query2.finance.yahoo.com/v8/finance/chart/{from}{to}=X?period1={}&period2={}&interval={interval}&events=history&includeAdjustedClose=true",
+            "https://query2.finance.yahoo.com/v8/finance/chart/{ticker}?period1={}&period2={}&interval={interval}&events=history&includeAdjustedClose=true",
             start.and_time(NaiveTime::default()).and_utc().timestamp(),
             end.and_time(NaiveTime::default()).and_utc().timestamp(),
         ))
         .send()
         .await?;
     if response.status() != StatusCode::OK {
-        panic!("{from}{to}: {}", response.text().await?);
+        panic!("{ticker}: {}", response.text().await?);
     };
     let rate: Rate = response.json().await?;
     if let Some(error) = rate.chart.error {
@@ -176,8 +235,8 @@ impl Default for HistoryCache {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pair {
-    pub from: Currency,
-    pub to: Currency,
+    pub from: Symbol,
+    pub to: Symbol,
     #[serde(default)]
     pub dirty: bool,
     pub rates: BTreeMap<NaiveDate, f64>,
@@ -212,7 +271,23 @@ pub struct Quote {
 
 #[cfg(test)]
 mod tests {
+
+    use crate::fx::Symbol;
+
     use super::Rate;
+
+    #[test]
+    fn parse_symbol() {
+        assert_eq!(
+            Symbol::Currency(crate::fx::Currency::CHF),
+            Symbol::from("CHF")
+        );
+        assert_eq!(
+            Symbol::Currency(crate::fx::Currency::USD),
+            Symbol::from("USD")
+        );
+        assert_eq!(Symbol::Stock("AAPL".to_string()), Symbol::from("AAPL"));
+    }
 
     #[test]
     fn parse_fx_quotes() {

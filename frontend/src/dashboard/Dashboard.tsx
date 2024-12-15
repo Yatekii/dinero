@@ -60,6 +60,7 @@ function Dashboard() {
       <NetWorth
         totalBalance={data.total_balance}
         totalPrediction={data.total_prediction}
+        baseCurrency={data.base_currency}
       />
 
       <div className="mt-5 w-full" />
