@@ -73,27 +73,27 @@ impl Adapter for Production {
                 )
             })
             .collect::<HashMap<String, SerdeAccount>>();
+        let path = self
+            .path
+            .join(Self::PORTFOLIO_LEDGER_DIR)
+            .join(&portfolio.owner);
         serde_yaml::to_writer(
-            std::fs::File::create("portfolio/portfolio.yaml")?,
+            std::fs::File::create(path.join(Self::PORTFOLIO_FILE_NAME))?,
             &SerdePortfolio {
                 base_currency: portfolio.base_currency,
                 accounts,
                 stocks: vec![],
             },
         )?;
-        let path = self
-            .path
-            .join(Self::PORTFOLIO_LEDGER_DIR)
-            .join(&portfolio.owner);
         std::fs::create_dir_all(&path)
             .with_context(|| format!("Could not create dir {}", path.display()))
     }
 
     fn load(&self, owner: Owner) -> Result<Portfolio> {
-        let file = File::open(self.path.join(Self::PORTFOLIO_FILE_NAME))?;
+        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&owner);
+        let file = File::create(path.join(Self::PORTFOLIO_FILE_NAME))?;
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
 
-        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&owner);
         let mut accounts = HashMap::new();
         for (id, account) in portfolio.accounts.into_iter() {
             let path = path.join(account.id);

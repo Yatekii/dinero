@@ -10,9 +10,10 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub enum Currency {
+    #[default]
     CHF,
     USD,
     EUR,

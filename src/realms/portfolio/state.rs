@@ -18,6 +18,7 @@ pub struct Portfolio {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerdePortfolio {
+    #[serde(default)]
     pub base_currency: Currency,
     #[serde(default)]
     pub stocks: Vec<Stock>,
