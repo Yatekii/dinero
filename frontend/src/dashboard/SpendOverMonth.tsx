@@ -13,7 +13,7 @@ export function SpendOverMonth({
     } as { [x: number]: number | null };
 
     for (const entry of Object.entries(year)) {
-      o[+entry[0]] = Object.values(entry[1]).reduce((a, b) => a + b);
+      o[+entry[0]] = Object.values(entry[1]).reduce((a, b) => a + b, 0);
     }
 
     for (let i = currentYear - 2; i <= currentYear; i++) {

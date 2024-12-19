@@ -56,7 +56,7 @@ export default function NetWorth({
           Current:{" "}
           {totalBalance.balances
             .map((b) => b.series[b.series.length - 1])
-            .reduce((t, v) => t + v)
+            .reduce((t, v) => t + v, 0)
             .toFixed(0)}{" "}
           {baseCurrency}
         </Title>
@@ -108,7 +108,7 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
 
   const total = payload
     .map((p) => (!p.category.includes("Prediction") ? p.value : 0))
-    .reduce((t, v) => t + v);
+    .reduce((t, v) => t + v, 0);
 
   return (
     <div
