@@ -91,6 +91,8 @@ impl Adapter for Production {
 
     fn load(&self, owner: Owner) -> Result<Portfolio> {
         let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&owner);
+        std::fs::create_dir_all(&path)
+            .with_context(|| anyhow!("Failed to create dir {}", path.display()))?;
         let portfolio_path = path.join(Self::PORTFOLIO_FILE_NAME);
         let file = File::options()
             .read(true)
