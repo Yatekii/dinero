@@ -91,7 +91,14 @@ impl Adapter for Production {
 
     fn load(&self, owner: Owner) -> Result<Portfolio> {
         let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(&owner);
-        let file = File::create(path.join(Self::PORTFOLIO_FILE_NAME))?;
+        let portfolio_path = path.join(Self::PORTFOLIO_FILE_NAME);
+        let file = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&portfolio_path)
+            .with_context(|| anyhow!("Could not open/create {}", portfolio_path.display()))?;
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
 
         let mut accounts = HashMap::new();
