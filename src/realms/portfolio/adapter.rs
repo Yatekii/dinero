@@ -98,7 +98,7 @@ impl Adapter for Production {
             .read(true)
             .write(true)
             .create(true)
-            .truncate(true)
+            .truncate(false)
             .open(&portfolio_path)
             .with_context(|| anyhow!("Could not open/create {}", portfolio_path.display()))?;
         let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
