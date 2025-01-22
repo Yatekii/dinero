@@ -161,10 +161,13 @@ impl Adapter for Production {
     }
 
     fn list_files(&self, owner: &Owner) -> Result<HashMap<String, Vec<PathBuf>>> {
-        let file = File::open(self.path.join(Self::PORTFOLIO_FILE_NAME))?;
-        let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
-
         let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
+        let protfolio_path = path.join(Self::PORTFOLIO_FILE_NAME);
+        let file = File::open(&protfolio_path)
+            .with_context(|| format!("{} could not be opened", protfolio_path.display()))?;
+        let portfolio: SerdePortfolio =
+            serde_yaml::from_reader(file).context("portfolio could not be read")?;
+
         let lists = portfolio
             .accounts
             .into_iter()
@@ -186,15 +189,18 @@ impl Adapter for Production {
     }
 
     fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<Ledger>> {
-        let file = File::open(self.path.join(Self::PORTFOLIO_FILE_NAME))?;
-        let portfolio: SerdePortfolio = serde_yaml::from_reader(file)?;
+        let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
+        let protfolio_path = path.join(Self::PORTFOLIO_FILE_NAME);
+        let file = File::open(&protfolio_path)
+            .with_context(|| format!("{} could not be opened", protfolio_path.display()))?;
+        let portfolio: SerdePortfolio =
+            serde_yaml::from_reader(file).context("portfolio could not be read")?;
 
-        let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         let ledger = portfolio
             .accounts
             .get(id)
             .with_context(|| format!("{id} does not exist in the ledgers"))?;
-        load(id, dir_path.join(id).join(path), ledger.format)
+        load(id, path.join(id).join(path), ledger.format)
     }
 
     fn add_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()> {
