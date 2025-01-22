@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fs::File, path::PathBuf};
 
 use anyhow::{anyhow, bail, Context, Ok, Result};
 use axum::async_trait;
@@ -33,7 +28,7 @@ pub trait Adapter: Send + Sync {
     ) -> Result<String>;
     async fn delete_ledger(&self, portfolio: Portfolio, id: &str) -> Result<()>;
     fn list_files(&self, owner: &Owner) -> Result<HashMap<String, Vec<PathBuf>>>;
-    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<Ledger>>;
+    fn load_file(&self, owner: &Owner, id: &str) -> Result<Vec<Ledger>>;
     fn add_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
     fn update_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()>;
     fn delete_file(&self, owner: &Owner, id: &str, name: &str) -> Result<()>;
@@ -188,7 +183,7 @@ impl Adapter for Production {
         Ok(lists)
     }
 
-    fn load_file(&self, owner: &Owner, id: &str, path: &Path) -> Result<Vec<Ledger>> {
+    fn load_file(&self, owner: &Owner, id: &str) -> Result<Vec<Ledger>> {
         let path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         let protfolio_path = path.join(Self::PORTFOLIO_FILE_NAME);
         let file = File::open(&protfolio_path)
@@ -206,15 +201,16 @@ impl Adapter for Production {
     fn add_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()> {
         let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
         let file_path = dir_path.join(id).join(name);
-        let mut file = File::create(file_path)?;
-        file.write_all(&content)?;
+        std::fs::write(&file_path, &content)
+            .with_context(|| format!("Failed to write (create) {}", file_path.display()))?;
         Ok(())
     }
 
     fn update_file(&self, owner: &Owner, id: &str, name: &str, content: Vec<u8>) -> Result<()> {
         let dir_path = self.path.join(Self::PORTFOLIO_LEDGER_DIR).join(owner);
-        let mut file = File::open(dir_path.join(id).join(name))?;
-        file.write_all(&content)?;
+        let file_path = dir_path.join(id).join(name);
+        std::fs::write(&file_path, &content)
+            .with_context(|| format!("Failed to write (update) {}", file_path.display()))?;
         Ok(())
     }
 
@@ -373,7 +369,7 @@ impl Adapter for Test {
         Ok(Default::default())
     }
 
-    fn load_file(&self, _owner: &Owner, _id: &str, _path: &Path) -> Result<Vec<Ledger>> {
+    fn load_file(&self, _owner: &Owner, _id: &str) -> Result<Vec<Ledger>> {
         Ok(Default::default())
     }
 

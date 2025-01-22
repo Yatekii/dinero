@@ -33,7 +33,7 @@ pub async fn handler(
     let files = paths
         .iter()
         .map(|path| {
-            let entries = adapter.load_file(&user.sub, &id, path);
+            let entries = adapter.load_file(&user.sub, &id);
             LedgerFile {
                 filename: path.display().to_string(),
                 number_of_entries: entries.as_ref().ok().map(|e| e.len()),

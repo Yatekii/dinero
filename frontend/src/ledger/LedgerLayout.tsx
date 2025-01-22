@@ -65,10 +65,10 @@ function LedgerSelector() {
         >
           <TabList variant="solid" className="flex flex-wrap p-2 flex-col">
             <>
-              <Tab icon={CakeIcon}>"All"</Tab>
+              <Tab icon={CakeIcon}>All</Tab>
               {ledgers.map((l) => (
-                <Tab key={l.name + l.currency} icon={CakeIcon}>
-                  {l.name} [{l.currency}]
+                <Tab key={l.name} icon={CakeIcon} style={{ marginLeft: 0 }}>
+                  {l.name}
                 </Tab>
               ))}
             </>
