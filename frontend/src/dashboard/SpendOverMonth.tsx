@@ -1,5 +1,6 @@
 import { BarChart, Title } from "@tremor/react";
 import { SpendPerMonth } from "../bindings/SpendPerMonth";
+import { valueFormatter } from "../lib/numbers";
 
 export function SpendOverMonth({
   spendPerMonth,
@@ -40,7 +41,3 @@ export function SpendOverMonth({
     </>
   );
 }
-
-const valueFormatter = function (n: number) {
-  return "CHF " + new Intl.NumberFormat("de-DE").format(n).toString();
-};

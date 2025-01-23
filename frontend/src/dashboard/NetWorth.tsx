@@ -5,6 +5,7 @@ import { cx } from "../lib/utils";
 import { getColorClassName } from "../lib/chartUtils";
 import { PortfolioLedgerData } from "../bindings/PortfolioLedgerData";
 import { Currency } from "../bindings/Currency";
+import { valueFormatter } from "../lib/numbers";
 
 interface ChartData {
   date: Date;
@@ -91,10 +92,6 @@ export default function NetWorth({
     </>
   );
 }
-
-const valueFormatter = function (n: number) {
-  return "CHF " + new Intl.NumberFormat("de-DE").format(n).toString();
-};
 
 const tickFormatter = function (n: unknown): string {
   const date = n as Date;

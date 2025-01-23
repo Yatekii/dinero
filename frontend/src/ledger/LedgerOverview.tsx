@@ -7,6 +7,7 @@ import {
 import { useLoaderData, useSearchParams } from "react-router-dom";
 import { LedgerSummary } from "../bindings/LedgerSummary";
 import { API_URL } from "../main";
+import { valueFormatter } from "../lib/numbers";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgerOverviewLoader({
@@ -83,12 +84,9 @@ export function LedgerOverview() {
       <DonutChart
         data={expenses}
         variant="pie"
-        valueFormatter={dataFormatter}
+        valueFormatter={valueFormatter}
         onValueChange={(v) => console.log(v)}
       />
     </>
   );
 }
-
-const dataFormatter = (number: number) =>
-  `$ ${Intl.NumberFormat("de-DE").format(number).toString()}`;

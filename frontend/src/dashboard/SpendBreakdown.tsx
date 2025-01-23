@@ -1,5 +1,6 @@
 import { DonutChart } from "@tremor/react";
 import { SpendPerMonth } from "../bindings/SpendPerMonth";
+import { valueFormatter } from "../lib/numbers";
 
 export function SpendBreakdown({
   spendPerMonth: spend_per_month,
@@ -49,7 +50,7 @@ export function SpendBreakdown({
         className="h-72 mt-4"
         data={data}
         index="name"
-        valueFormatter={dataFormatter}
+        valueFormatter={valueFormatter}
       />
     </>
   );
@@ -59,6 +60,3 @@ export interface Preset {
   month: number;
   year: number;
 }
-
-const dataFormatter = (number: number) =>
-  `$ ${Intl.NumberFormat("de-DE").format(number).toString()}`;
