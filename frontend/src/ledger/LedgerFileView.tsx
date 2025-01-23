@@ -69,6 +69,7 @@ export function LedgerFileView() {
 
     navigate(`/ledger/${id}/files`);
   };
+
   const addFiles = async (id: string, files: File[]) => {
     const body = new FormData();
     body.append(`${files[0].name}`, files[0]);

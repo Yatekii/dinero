@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@tremor/react";
 import { SpendPerMonth } from "../bindings/SpendPerMonth";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Account } from "../bindings/Account";
 import { API_URL } from "../main";
 import { ListLedgerResponse } from "../bindings/ListLedgerResponse";
@@ -85,7 +85,12 @@ export function SpendBreakdownTransactions({
           </TableHead>
           <TableBody>
             {data.ledgers.map((ledger) => (
-              <>
+              <Fragment
+                key={(() => {
+                  console.log(ledger.name);
+                  return ledger.name;
+                })()}
+              >
                 <TableRow>
                   <TableCell colSpan={4}>
                     <h1 className="text-4xl">{ledger.symbol}</h1>
@@ -107,7 +112,7 @@ export function SpendBreakdownTransactions({
                     </TableCell>
                   </TableRow>
                 ))}
-              </>
+              </Fragment>
             ))}
           </TableBody>
         </Table>
