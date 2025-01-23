@@ -1,16 +1,10 @@
 import {
-  Button,
-  Dialog,
-  DialogPanel,
-  Flex,
-  Title,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeaderCell,
   TableRow,
-  Textarea,
 } from "@tremor/react";
 import {
   CheckIcon,
@@ -19,7 +13,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/solid";
 import { Navigate, useLoaderData, useNavigate } from "react-router-dom";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import type { ListLedgerResponse } from "../bindings/ListLedgerResponse";
 import { LedgerFiles } from "../bindings/LedgerFiles";
 import { Tooltip } from "../components/Tooltip";
@@ -53,7 +47,6 @@ export function LedgerFileView() {
   const { ledgers, currentLedger, ledgerId } = useLoaderData() as Awaited<
     ReturnType<typeof ledgerFileLoader>
   >;
-  const [isImportOpen, setIsImportOpen] = useState(false);
   const navigate = useNavigate();
 
   const updateFile = async (id: string, name: string, file: File) => {
@@ -112,32 +105,10 @@ export function LedgerFileView() {
     }
   }
 
+  currentLedger.files.sort((a, b) => b.filename.localeCompare(a.filename));
+
   return (
     <>
-      <div className="flex">
-        <Flex justifyContent="end">
-          <Dialog
-            open={isImportOpen}
-            onClose={(val) => setIsImportOpen(val)}
-            static={true}
-          >
-            <DialogPanel className="overflow-visible">
-              <Title className="mb-3">
-                <Flex>
-                  Import new transactions to the ledger
-                  <Button
-                    variant="light"
-                    onClick={() => setIsImportOpen(false)}
-                  >
-                    Close
-                  </Button>
-                </Flex>
-              </Title>
-              <Import ledgerId={currentLedger.id} />
-            </DialogPanel>
-          </Dialog>
-        </Flex>
-      </div>
       <Table className="mt-5">
         <TableHead>
           <TableRow>
@@ -212,52 +183,6 @@ export function LedgerFileView() {
           </p>
         )}
       </div>
-    </>
-  );
-}
-
-function Import({ ledgerId }: { ledgerId: string }) {
-  const [content, setContent] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  return (
-    <>
-      <Textarea
-        className="mt-5"
-        onChange={(e) => setContent(e.target.value)}
-        id="description"
-        placeholder="Paste your CSV here..."
-        value={content}
-      />
-      <Button
-        size="sm"
-        className="mt-5"
-        onClick={async () => {
-          setError("");
-          const response = await fetch(`${API_URL}/ledger/${ledgerId}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              transactions_data: content,
-            }),
-            credentials: "include",
-            redirect: "follow",
-          });
-
-          if (response.ok) {
-            setSuccess("Values added!");
-            setTimeout(() => setSuccess(""), 3000);
-          } else {
-            setError(await response.text());
-          }
-        }}
-      >
-        Import
-      </Button>
-      {error && <p className="text-red">{error}</p>}
-      {success && <p className="text-green">{success}</p>}
     </>
   );
 }

@@ -9,6 +9,7 @@ import {
 import { ListLedgerResponse } from "../bindings/ListLedgerResponse";
 import { CakeIcon } from "@heroicons/react/24/solid";
 import { API_URL } from "../main";
+import { cx } from "../lib/utils";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function ledgersLoader() {
@@ -18,6 +19,8 @@ export async function ledgersLoader() {
   });
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
 
+  ledgers.sort((a, b) => a.name.localeCompare(b.name));
+
   return { ledgers };
 }
 
@@ -26,7 +29,7 @@ export function LedgerLayout() {
   return (
     <div className="mx-full flex flex-row overflow-scroll h-screen">
       <LedgerSelector />
-      <div className="w-full">
+      <div className="w-full ml-48">
         {params.ledgerId && <LedgerMenu />}
         <Outlet />
       </div>
@@ -43,38 +46,34 @@ function LedgerSelector() {
 
   return (
     <>
-      <div className="flex flex-col mb-5">
-        <Button
-          variant="primary"
-          onClick={() => navigate(`/ledger/add`)}
-          className="py-1 px-3 mb-5"
-        >
-          Add
-        </Button>
-        <TabGroup
-          index={
-            params.ledgerId
-              ? ledgers.findIndex((l) => l.id == params.ledgerId) + 1
-              : 0
-          }
-          onIndexChange={(index) =>
-            index == 0
-              ? navigate(`/ledger`)
-              : navigate(`/ledger/${ledgers[index - 1].id}`)
-          }
-        >
-          <TabList variant="solid" className="flex flex-wrap p-2 flex-col">
-            <>
-              <Tab icon={CakeIcon}>All</Tab>
-              {ledgers.map((l) => (
-                <Tab key={l.name} icon={CakeIcon} style={{ marginLeft: 0 }}>
-                  {l.name}
-                </Tab>
-              ))}
-            </>
-          </TabList>
-        </TabGroup>
-      </div>
+      <ul className="flex flex-col mb-5 w-48 fixed">
+        <li>
+          <Button
+            variant="primary"
+            onClick={() => navigate(`/ledger/add`)}
+            className="py-1 px-3 mb-5"
+          >
+            Add
+          </Button>
+        </li>
+        {ledgers.map((l) => {
+          const active = params.ledgerId == l.id;
+          return (
+            <li
+              key={l.id}
+              className={cx(
+                "text-white hover:bg-slate-700 rounded-md border-slate-400 border-solid border-2 p-2 py-1 mb-2",
+                active ? "bg-slate-700" : ""
+              )}
+            >
+              <a href={`/ledger/${l.id}`}>
+                <CakeIcon className="h-4 w-4 -mt-2 mr-2 inline" />
+                {l.name}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
       <div className="w-5 h-full" />
     </>
   );

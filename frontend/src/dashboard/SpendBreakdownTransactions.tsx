@@ -85,12 +85,7 @@ export function SpendBreakdownTransactions({
           </TableHead>
           <TableBody>
             {data.ledgers.map((ledger) => (
-              <Fragment
-                key={(() => {
-                  console.log(ledger.name);
-                  return ledger.name;
-                })()}
-              >
+              <Fragment key={ledger.name + ledger.symbol}>
                 <TableRow>
                   <TableCell colSpan={4}>
                     <h1 className="text-4xl">{ledger.symbol}</h1>
