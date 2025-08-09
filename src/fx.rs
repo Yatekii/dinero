@@ -222,7 +222,7 @@ async fn fetch_rates(
     };
     let response = client
         .get(format!(
-            "https://query2.finance.yahoo.com/v8/finance/chart/{ticker}?period1={}&period2={}&interval={interval}&events=history&includeAdjustedClose=true",
+            "https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?period1={}&period2={}&interval={interval}&events=history&includeAdjustedClose=true",
             start.and_time(NaiveTime::default()).and_utc().timestamp(),
             end.and_time(NaiveTime::default()).and_utc().timestamp(),
         ))
