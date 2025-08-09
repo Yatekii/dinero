@@ -220,6 +220,10 @@ fn get_date_series(accounts: &HashMap<String, Account>) -> Vec<NaiveDate> {
         }
     }
 
+    if min_date == NaiveDate::MAX {
+        return vec![];
+    }
+
     (min_date.iter_days().take_while(|d| d <= &max_date)).collect::<Vec<_>>()
 }
 
