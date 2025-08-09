@@ -8,17 +8,20 @@ import { useState } from "react";
 import { Tab, TabGroup, TabList, Title } from "@tremor/react";
 import { SpendBreakdownTransactions } from "./SpendBreakdownTransactions";
 import { API_URL } from "../main";
+import { authenticatedFetch } from "../lib/auth";
+import { withAuth } from "../lib/routerAuth";
 
 // eslint-disable-next-line react-refresh/only-export-components
-export async function dataLoader() {
-  const response = await fetch(`${API_URL}/data`, {
-    credentials: "include",
-    redirect: "follow",
-  });
+export const dataLoader = withAuth(async () => {
+  const response = await authenticatedFetch(`${API_URL}/data`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+  }
+  
   const data = (await response.json()) as PortfolioSummaryResponse;
-
   return data;
-}
+});
 
 function Dashboard() {
   const data = useLoaderData() as Awaited<ReturnType<typeof dataLoader>>;

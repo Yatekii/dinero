@@ -79,6 +79,7 @@ async fn serve() -> anyhow::Result<()> {
                     "/auth/authorized",
                     get(handler::auth::login::login_authorized),
                 )
+                .route("/auth/status", get(handler::auth::status::auth_status))
                 .route("/logout", get(handler::auth::logout::logout)),
         )
         .with_state(AppState::new()?)

@@ -6,6 +6,8 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useCookies } from "react-cookie";
+import { useEffect, useState } from "react";
+import { checkAuthStatus, redirectToAuth } from "./lib/auth";
 import { API_URL } from "./main";
 
 const items = () => [
@@ -18,31 +20,54 @@ const reverseItems = () => items().reverse();
 export function Layout() {
   const [cookies, setCookie] = useCookies(["USERID", "USERNAME"]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  if (searchParams.get("userid") && searchParams.get("username")) {
-    setCookie("USERID", searchParams.get("userid"));
-    setCookie("USERNAME", searchParams.get("username"));
-    setSearchParams((prev) => {
-      prev.delete("userid");
-      prev.delete("username");
-      return prev;
-    });
+  // Handle auth callback with userid/username params
+  useEffect(() => {
+    if (searchParams.get("userid") && searchParams.get("username")) {
+      setCookie("USERID", searchParams.get("userid"));
+      setCookie("USERNAME", searchParams.get("username"));
+      setSearchParams((prev) => {
+        prev.delete("userid");
+        prev.delete("username");
+        return prev;
+      });
+    }
+  }, [searchParams, setCookie, setSearchParams]);
+
+  // Since loaders handle auth now, just mark as checked immediately
+  // and assume we're authenticated if we reach the Layout component
+  useEffect(() => {
+    setAuthChecked(true);
+    setIsAuthenticated(true);
+  }, []);
+
+  // Show loading while checking auth
+  if (!authChecked) {
+    return (
+      <Card className="w-screen h-screen flex justify-center items-center">
+        <h1 className="text-white text-4xl">Checking authentication...</h1>
+      </Card>
+    );
   }
 
-  if (!cookies.USERID) {
-    document.location.replace(`${API_URL}/auth/oidc`);
+  // Show loading while redirecting to auth
+  if (!isAuthenticated) {
+    return (
+      <Card className="w-screen h-screen flex justify-center items-center">
+        <h1 className="text-white text-4xl">Redirecting to login...</h1>
+      </Card>
+    );
   }
 
+  // Show main app when authenticated
   return (
     <Card className="w-screen h-screen flex justify-center items-center">
-      {cookies.USERID ? (
-        <div className="w-screen h-screen overflow-scroll">
-          <MainMenu username={cookies.USERNAME} />
-          <Outlet />
-        </div>
-      ) : (
-        <h1 className="text-white text-4xl">Logging in ...</h1>
-      )}
+      <div className="w-screen h-screen overflow-scroll">
+        <MainMenu username={cookies.USERNAME || "User"} />
+        <Outlet />
+      </div>
     </Card>
   );
 }

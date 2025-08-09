@@ -10,19 +10,22 @@ import { ListLedgerResponse } from "../bindings/ListLedgerResponse";
 import { CakeIcon } from "@heroicons/react/24/solid";
 import { API_URL } from "../main";
 import { cx } from "../lib/utils";
+import { authenticatedFetch } from "../lib/auth";
+import { withAuth } from "../lib/routerAuth";
 
 // eslint-disable-next-line react-refresh/only-export-components
-export async function ledgersLoader() {
-  const response = await fetch(`${API_URL}/ledgers`, {
-    credentials: "include",
-    redirect: "follow",
-  });
+export const ledgersLoader = withAuth(async () => {
+  const response = await authenticatedFetch(`${API_URL}/ledgers`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ledgers: ${response.status} ${response.statusText}`);
+  }
+  
   const ledgers = ((await response.json()) as ListLedgerResponse).ledgers;
-
   ledgers.sort((a, b) => a.name.localeCompare(b.name));
 
   return { ledgers };
-}
+});
 
 export function LedgerLayout() {
   const params = useParams();
