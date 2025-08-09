@@ -93,3 +93,49 @@ npm run build
 - Backend uses `insta` for snapshot testing of bank parsers
 - Tests focus on CSV parsing accuracy across different bank formats
 - No specific frontend test framework currently configured
+
+## Future Improvements
+
+### Portfolio Prediction Enhancements
+*Keywords: portfolio prediction, prediction improvements, forecasting, financial modeling*
+
+**Current Issue**: The portfolio growth prediction uses basic linear regression on 300 data points, which is overly simplistic for financial forecasting.
+
+**Improvement Ideas**:
+
+1. **Multiple Model Approach**
+   - Linear trend (current)
+   - Moving averages for trend-following
+   - Mean reversion for market corrections
+   - ARIMA for time series patterns
+
+2. **Asset-Specific Modeling**
+   - Stocks: Volatility models (GARCH), market correlation
+   - Bonds: Interest rate sensitivity
+   - Cash: Inflation adjustment
+   - Crypto: High volatility with sentiment factors
+
+3. **Enhanced Statistical Methods**
+   - Monte Carlo simulation with thousands of scenarios
+   - Confidence intervals (5th-95th percentiles)
+   - Historical volatility patterns
+   - Asset correlation matrices
+
+4. **Feature Engineering**
+   - Seasonality detection for spending/income patterns
+   - Trend decomposition (long-term vs cyclical)
+   - Market regime detection (bull/bear periods)
+   - External economic indicators
+
+5. **Risk-Adjusted Metrics**
+   - Value at Risk (VaR)
+   - Expected shortfall
+   - Maximum drawdown estimation
+   - Sharpe ratio calculations
+
+6. **Machine Learning Options**
+   - LSTM networks for complex patterns
+   - Random Forest for non-linear relationships
+   - Ensemble methods for robustness
+
+**Location**: `src/handler/portfolio/get.rs:125-144` (current linear regression implementation)
