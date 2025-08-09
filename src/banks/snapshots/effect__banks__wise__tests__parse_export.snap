@@ -1,0 +1,41 @@
+---
+source: src/banks/wise.rs
+expression: "Wise::parse(\"Wise\", TRANSACTIONS.to_string()).unwrap()"
+---
+ParsedAccount {
+    ledgers: [
+        Ledger {
+            name: "Wise",
+            symbol: Currency(
+                CHF,
+            ),
+            records: [
+                LedgerRecord {
+                    date: 2025-07-29,
+                    amount: -53197.44,
+                    description: "Converted 53,197.44 CHF to 65,792.47 USD for USD balance",
+                    category: "WISE",
+                },
+                LedgerRecord {
+                    date: 2025-07-29,
+                    amount: 52996.45,
+                    description: "Received money from Karolina Elzbieta Jartych with reference ",
+                    category: "WISE",
+                },
+                LedgerRecord {
+                    date: 2025-07-28,
+                    amount: 96.45,
+                    description: "Received money from Karolina Elzbieta Jartych with reference ",
+                    category: "WISE",
+                },
+                LedgerRecord {
+                    date: 2025-01-06,
+                    amount: 104.54,
+                    description: "Received money from FORGED GMBH with reference ",
+                    category: "WISE",
+                },
+            ],
+            kind: Bank,
+        },
+    ],
+}

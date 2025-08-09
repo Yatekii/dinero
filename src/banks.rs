@@ -2,6 +2,7 @@ mod ibkr;
 mod neon;
 mod revolut;
 mod ubs;
+mod wise;
 
 use std::path::Path;
 
@@ -18,6 +19,7 @@ pub fn load(name: &str, path: impl AsRef<Path>, format: BankFormat) -> anyhow::R
         BankFormat::Ubs => load_inner::<ubs::Ubs>(name, path),
         BankFormat::Ibkr => load_inner::<ibkr::Ibkr>(name, path),
         BankFormat::Revolut => load_inner::<revolut::Revolut>(name, path),
+        BankFormat::Wise => load_inner::<wise::Wise>(name, path),
     }
 }
 
@@ -112,4 +114,57 @@ pub struct ExtendedLedgerRecord {
     pub original_category: String,
     pub comments: String,
     pub checked: bool,
+}
+
+#[cfg(test)]
+pub mod test_utils {
+    use crate::handler::portfolio::get::handler;
+    use crate::handler::auth::user::User;
+    use crate::realms::portfolio::state::Owner;
+    use crate::state::{CacheState, PortfolioAdapter};
+    use axum::extract::State;
+    use std::{path::PathBuf, sync::Arc};
+
+    pub async fn test_account_balance_api(account_id: &str, portfolio_path: &str, owner_id: &str) -> f64 {
+        // Set up the application state
+        let portfolio_adapter: PortfolioAdapter = Arc::new(
+            crate::realms::portfolio::adapter::Production::new(PathBuf::from(portfolio_path))
+        );
+        let cache_state = CacheState::default();
+        
+        // Create a mock user
+        let user = User {
+            sub: Owner::new(owner_id.to_string()),
+            name: "Test User".to_string(),
+        };
+        
+        // Call the /data endpoint handler
+        let result = handler(
+            State(portfolio_adapter),
+            State(cache_state),
+            user,
+        ).await;
+        
+        match result {
+            Ok(response) => {
+                let data = response.0;
+                
+                // Find the account in the response
+                let account_balance = data.total_balance.balances.iter()
+                    .find(|b| b.id == account_id)
+                    .expect(&format!("{} account not found in response", account_id));
+                
+                // Get the current balance (last value in series)
+                let current_balance = account_balance.series.last()
+                    .copied()
+                    .unwrap_or(0.0);
+                
+                println!("{} account current balance: {:.2} CHF", account_id, current_balance);
+                current_balance
+            }
+            Err(e) => {
+                panic!("Failed to get portfolio data: {:?}", e);
+            }
+        }
+    }
 }

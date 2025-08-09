@@ -27,4 +27,5 @@ pub enum BankFormat {
     Neon,
     Revolut,
     Ibkr,
+    Wise,
 }

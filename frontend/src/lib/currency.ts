@@ -8,6 +8,7 @@ import SvgNeon from "../assets/neon.svg";
 import SvgUbs from "../assets/ubs.svg";
 import SvgRevolut from "../assets/revolut.svg";
 import SvgIbkr from "../assets/ibkr.svg";
+import SvgWise from "../assets/wise.svg";
 
 export const CURRENCIES = [
   {
@@ -52,6 +53,11 @@ export const BANKS = [
     id: "ibkr",
     name: "Interactive Brokers",
     icon: SvgIbkr,
+  },
+  {
+    id: "wise",
+    name: "Wise",
+    icon: SvgWise,
   },
   {
     id: "ubs",
