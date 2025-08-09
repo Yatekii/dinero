@@ -1,8 +1,9 @@
+import { useState, useMemo, useCallback } from "react";
 import { Title } from "@tremor/react";
 import { PortfolioLedgersData } from "../bindings/PortfolioLedgersData";
-import { AreaChart, TooltipProps } from "../components/AreaChart";
+import { AreaChart, TooltipProps, AreaChartEventProps } from "../components/AreaChart";
 import { cx } from "../lib/utils";
-import { getColorClassName } from "../lib/chartUtils";
+import { getColorClassName, AvailableChartColorsKeys } from "../lib/chartUtils";
 import { PortfolioLedgerData } from "../bindings/PortfolioLedgerData";
 import { Currency } from "../bindings/Currency";
 import { valueFormatter } from "../lib/numbers";
@@ -21,33 +22,69 @@ export default function NetWorth({
   totalPrediction: PortfolioLedgerData;
   baseCurrency: Currency;
 }) {
-  const data = [] as ChartData[];
+  // State to track which accounts are visible
+  const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(new Set());
+  
+  // Memoize data processing to reduce lag
+  const { data, categories } = useMemo(() => {
+    const processedData = [] as ChartData[];
 
-  for (let i = 0; i < totalBalance.timestamps.length; i++) {
-    data.push({
-      date: new Date((totalBalance.timestamps[i] ?? 0) * 1000),
-    });
-    for (const entry of totalBalance.balances) {
-      data[i][entry.name] = entry.series[i] ?? 0;
+    // Build data for ALL accounts, but set hidden ones to 0
+    for (let i = 0; i < totalBalance.timestamps.length; i++) {
+      processedData.push({
+        date: new Date((totalBalance.timestamps[i] ?? 0) * 1000),
+      });
+      for (const entry of totalBalance.balances) {
+        // Set value to 0 for hidden accounts, otherwise use actual value
+        processedData[i][entry.name] = hiddenAccounts.has(entry.name) ? 0 : (entry.series[i] ?? 0);
+      }
     }
-  }
 
-  const lastDate = totalBalance.timestamps[totalBalance.timestamps.length - 1];
-  for (let i = 0; i < totalPrediction.series.length; i++) {
-    const date = new Date(lastDate * 1000);
-    date.setDate(date.getDate() + i);
-    data.push({
-      date,
+    const lastDate = totalBalance.timestamps[totalBalance.timestamps.length - 1];
+    const isPredictionVisible = !hiddenAccounts.has(totalPrediction.name);
+    
+    // Always add prediction data, but set to 0 if hidden
+    for (let i = 0; i < totalPrediction.series.length; i++) {
+      const date = new Date(lastDate * 1000);
+      date.setDate(date.getDate() + i);
+      processedData.push({
+        date,
+      });
+      processedData[processedData.length - 1][totalPrediction.name] =
+        isPredictionVisible ? (totalPrediction.series[i] ?? 0) : 0;
+    }
+
+    // Build categories from ALL accounts (keep labels visible)
+    const processedCategories = [];
+    for (const entry of totalBalance.balances) {
+      processedCategories.push({ name: entry.name });
+    }
+    processedCategories.push({ name: totalPrediction.name, stack: "prediction" });
+
+    return { data: processedData, categories: processedCategories };
+  }, [totalBalance, totalPrediction, hiddenAccounts]);
+
+  // Memoize current balance calculation
+  const currentBalance = useMemo(() => {
+    return totalBalance.balances
+      .filter((entry) => !hiddenAccounts.has(entry.name))
+      .map((b) => b.series[b.series.length - 1])
+      .reduce((t, v) => t + v, 0)
+      .toFixed(0);
+  }, [totalBalance.balances, hiddenAccounts]);
+
+  // Click handler for toggling account visibility
+  const handleLegendClick = useCallback((categoryName: string) => {
+    setHiddenAccounts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryName)) {
+        newSet.delete(categoryName);
+      } else {
+        newSet.add(categoryName);
+      }
+      return newSet;
     });
-    data[data.length - 1][totalPrediction.name] =
-      totalPrediction.series[i] ?? 0;
-  }
-
-  const categories = [];
-  for (const entry of totalBalance.balances) {
-    categories.push({ name: entry.name });
-  }
-  categories.push({ name: totalPrediction.name, stack: "prediction" });
+  }, []);
 
   return (
     <>
@@ -55,40 +92,75 @@ export default function NetWorth({
         <Title>Net worth over time (CHF)</Title>
         <Title>
           Current:{" "}
-          {totalBalance.balances
-            .map((b) => b.series[b.series.length - 1])
-            .reduce((t, v) => t + v, 0)
-            .toFixed(0)}{" "}
+          {currentBalance}{" "}
           {baseCurrency}
         </Title>
       </div>
-      <AreaChart
-        className="h-72 mt-4"
-        data={data}
-        index="date"
-        yAxisWidth={65}
-        categories={categories}
-        connectNulls={true}
-        colors={[
-          "blue",
-          "emerald",
-          "violet",
-          "amber",
-          "gray",
-          "cyan",
-          "pink",
-          "lime",
-          "fuchsia",
-        ]}
-        valueFormatter={valueFormatter}
-        tickFormatter={tickFormatter}
-        type="stacked"
-        xAxisLabel="Date"
-        yAxisLabel="Net Worth"
-        customTooltip={Tooltip}
-        minValue={0}
-        tickGap={50}
-      />
+      <div className="relative">
+        {/* Custom Legend */}
+        <div className="flex flex-wrap justify-end gap-2 mb-4">
+          {categories.map((category, index) => {
+            const isHidden = hiddenAccounts.has(category.name);
+            const colors: AvailableChartColorsKeys[] = ["blue", "emerald", "violet", "amber", "gray", "cyan", "pink", "lime", "fuchsia"];
+            const color = colors[index % colors.length];
+            
+            return (
+              <button
+                key={category.name}
+                onClick={() => handleLegendClick(category.name)}
+                className={cx(
+                  "group inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 transition cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
+                  isHidden && "opacity-50"
+                )}
+              >
+                <span
+                  className={cx(
+                    "h-[3px] w-3.5 shrink-0 rounded-full",
+                    getColorClassName(color, "bg")
+                  )}
+                  aria-hidden={true}
+                />
+                <span
+                  className={cx(
+                    "truncate whitespace-nowrap text-xs text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-50"
+                  )}
+                >
+                  {category.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        
+        <AreaChart
+          className="h-72"
+          data={data}
+          index="date"
+          yAxisWidth={65}
+          categories={categories}
+          connectNulls={true}
+          colors={[
+            "blue",
+            "emerald",
+            "violet",
+            "amber",
+            "gray",
+            "cyan",
+            "pink",
+            "lime",
+            "fuchsia",
+          ]}
+          valueFormatter={valueFormatter}
+          tickFormatter={tickFormatter}
+          type="stacked"
+          xAxisLabel="Date"
+          yAxisLabel="Net Worth"
+          customTooltip={Tooltip}
+          minValue={0}
+          tickGap={50}
+          showLegend={false}
+        />
+      </div>
     </>
   );
 }
@@ -104,7 +176,8 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
 
   const total = payload
-    .map((p) => (!p.category.includes("Prediction") ? p.value : 0))
+    .filter((p) => !p.category.includes("Prediction"))
+    .map((p) => p.value)
     .reduce((t, v) => t + v, 0);
 
   return (
