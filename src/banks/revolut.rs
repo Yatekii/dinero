@@ -170,4 +170,16 @@ CARD_PAYMENT,Current,2023-10-23 17:56:02,2023-10-24 13:33:24,Coop,-1.45,0.00,CHF
 "#;
         insta::assert_debug_snapshot!(Revolut::parse("Neon", TRANSACTIONS.to_string()).unwrap());
     }
+
+    #[tokio::test]
+    async fn test_revolut_balance_api_test_data() {
+        use crate::banks::test_utils::test_account_balance_api;
+        
+        let current_balance = test_account_balance_api("revolut", "portfolio-test", "123456789").await;
+        
+        // Test exact balance - updated after first run
+        let expected_balance = 1309.46;
+        assert!((current_balance - expected_balance).abs() < 0.01, 
+                "Expected Revolut balance {:.2}, got {:.2}", expected_balance, current_balance);
+    }
 }

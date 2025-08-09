@@ -99,4 +99,17 @@ mod tests {
     fn parse() {
         insta::assert_debug_snapshot!(super::Ubs::parse("UBS", TRANSACTIONS.into()).unwrap());
     }
+
+    #[tokio::test]
+    async fn test_ubs_private_balance_api_test_data() {
+        use crate::banks::test_utils::test_account_balance_api;
+        
+        let current_balance = test_account_balance_api("ubs-private", "portfolio-test", "123456789").await;
+        
+        // Test exact balance - updated after first run
+        let expected_balance = 15846.75;
+        assert!((current_balance - expected_balance).abs() < 0.01, 
+                "Expected UBS Private balance {:.2}, got {:.2}", expected_balance, current_balance);
+    }
+
 }

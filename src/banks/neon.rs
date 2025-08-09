@@ -82,4 +82,16 @@ pub mod tests {
 "#;
         insta::assert_debug_snapshot!(Neon::parse("Neon", TRANSACTIONS.to_string()).unwrap());
     }
+
+    #[tokio::test]
+    async fn test_neon_balance_api_test_data() {
+        use crate::banks::test_utils::test_account_balance_api;
+        
+        let current_balance = test_account_balance_api("neon", "portfolio-test", "123456789").await;
+        
+        // Test exact balance - updated after first run
+        let expected_balance = 746.82;
+        assert!((current_balance - expected_balance).abs() < 0.01, 
+                "Expected Neon balance {:.2}, got {:.2}", expected_balance, current_balance);
+    }
 }

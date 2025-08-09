@@ -200,4 +200,16 @@ mod tests {
     fn parse_fail() {
         super::Ibkr::parse("IBKR", TRANSACTIONS_BAD.into()).unwrap();
     }
+
+    #[tokio::test]
+    async fn test_ibkr_balance_api_test_data() {
+        use crate::banks::test_utils::test_account_balance_api;
+        
+        let current_balance = test_account_balance_api("ibkr", "portfolio-test", "123456789").await;
+        
+        // Test exact balance - updated after first run
+        let expected_balance = 6879.76;
+        assert!((current_balance - expected_balance).abs() < 0.01, 
+                "Expected IBKR balance {:.2}, got {:.2}", expected_balance, current_balance);
+    }
 }
