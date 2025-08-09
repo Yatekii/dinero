@@ -1,0 +1,6 @@
+"TransferWise ID",Date,"Date Time",Amount,Currency,Description,"Payment Reference","Running Balance","Exchange From","Exchange To","Exchange Rate","Payer Name","Payee Name","Payee Account Number",Merchant,"Card Last Four Digits","Card Holder Full Name",Attachment,Note,"Total fees","Exchange To Amount"
+TRANSFER-2234567890,20-12-2024,"20-12-2024 11:30:45.678",500.00,USD,"Received money from Jane Doe with reference Freelance payment",,500.00,,,,"Jane Doe",,,,,,,,3.50,
+CARD-2234567891,18-12-2024,"18-12-2024 15:45:20.123",-75.30,USD,"Card payment at Online Store",,,424.70,,,,,,"Online Store","5678",,,,0.00,
+TRANSFER-2234567892,15-12-2024,"15-12-2024 09:20:15.456",-100.00,USD,"Sent money to Charlie Brown",,500.00,,,,"Test User","Charlie Brown",,,,,,,2.00,
+TRANSFER-2234567893,10-12-2024,"10-12-2024 14:10:30.789",600.00,USD,"Received payment from Client XYZ",,600.00,,,,"Client XYZ",,,,,,,,4.00,
+TRANSFER-2234567894,01-12-2024,"01-12-2024 08:00:00.000",0.00,USD,"Initial balance",,0.00,,,,"System","Test User",,,,,,,0.00,

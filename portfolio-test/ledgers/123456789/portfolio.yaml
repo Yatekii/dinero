@@ -1,0 +1,43 @@
+base_currency: CHF
+stocks: []
+accounts:
+  revolut:
+    id: revolut
+    owner: "123456789"
+    name: Revolut
+    format: revolut
+    initial_balance: null
+    initial_date: null
+    spending: false
+  ibkr:
+    id: ibkr
+    owner: "123456789"
+    name: IBKR
+    format: ibkr
+    initial_balance: null
+    initial_date: null
+    spending: false
+  ubs-private:
+    id: ubs-private
+    owner: "123456789"
+    name: UBS Private
+    format: ubs
+    initial_balance: 15000.00
+    initial_date: 2019-01-01
+    spending: false
+  neon:
+    id: neon
+    owner: "123456789"
+    name: Neon
+    format: neon
+    initial_balance: null
+    initial_date: null
+    spending: true
+  wise:
+    id: wise
+    owner: "123456789"
+    name: Wise
+    format: wise
+    initial_balance: null
+    initial_date: null
+    spending: false

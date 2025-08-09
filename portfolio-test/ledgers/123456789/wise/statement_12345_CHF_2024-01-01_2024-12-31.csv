@@ -1,0 +1,8 @@
+"TransferWise ID",Date,"Date Time",Amount,Currency,Description,"Payment Reference","Running Balance","Exchange From","Exchange To","Exchange Rate","Payer Name","Payee Name","Payee Account Number",Merchant,"Card Last Four Digits","Card Holder Full Name",Attachment,Note,"Total fees","Exchange To Amount"
+BALANCE-1234567890,15-12-2024,"15-12-2024 14:23:15.123",-2500.00,CHF,"Converted 2,500.00 CHF to 2,750.50 USD for USD balance",,1500.50,CHF,USD,1.1002,,,,,,,,,15.00,2750.50
+TRANSFER-1234567891,14-12-2024,"14-12-2024 10:15:30.456",3000.00,CHF,"Received money from Alice Johnson with reference Salary Dec",,4000.50,,,,"Alice Johnson",,,,,,,,5.00,
+TRANSFER-1234567892,10-12-2024,"10-12-2024 16:45:22.789",-750.25,CHF,"Sent money to Bob Wilson",,1000.50,,,,"Alice Johnson","Bob Wilson",,,,,,,2.50,
+CARD-1234567893,08-12-2024,"08-12-2024 12:30:45.012",-249.75,CHF,"Card payment at Tech Store Zurich",,,1750.75,,,,,,"Tech Store Zurich","1234",,,,0.00,
+TRANSFER-1234567894,05-12-2024,"05-12-2024 09:20:18.345",2000.00,CHF,"Received money from Company ABC Ltd with reference Invoice 2023-12",,2000.50,,,,"Company ABC Ltd",,,,,,,,3.00,
+TRANSFER-1234567896,01-06-2024,"01-06-2024 10:00:00.000",500.00,CHF,"Mid-year bonus",,500.50,,,,"Company ABC Ltd",,,,,,,,2.00,
+TRANSFER-1234567895,01-01-2024,"01-01-2024 08:00:00.000",0.50,CHF,"Initial balance adjustment",,0.50,,,,"System","Test User",,,,,,,0.00,
