@@ -7,7 +7,7 @@ import {
 } from "react-router-dom";
 import { useCookies } from "react-cookie";
 import { useEffect, useState } from "react";
-import { checkAuthStatus, redirectToAuth } from "./lib/auth";
+import { checkAuthStatus, redirectToAuth, logout } from "./lib/auth";
 import { API_URL } from "./main";
 
 const items = () => [
@@ -102,11 +102,8 @@ function MainMenu({ username }: { username: string }) {
             [{username}]
           </Tab>
           <button
-            onClick={async () => {
-              await fetch(`${API_URL}/logout`, {
-                credentials: "include",
-                redirect: "follow",
-              });
+            onClick={() => {
+              logout();
             }}
             className="p-1 py-1 text-gray-600 mt-5 hover:underline"
           >
